@@ -32,7 +32,6 @@ export interface DeepAgentFactoryParams {
 export interface ModelFactoryInput {
   readonly apiKey: string;
   readonly model: string;
-  readonly temperature: number;
 }
 
 export interface RuntimeToolExecutionContext {

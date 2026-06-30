@@ -13,7 +13,6 @@ describe('createLangGraphDeepAgentRuntime', () => {
     expect(created.model).toEqual({
       apiKey: 'test-key',
       model: 'gpt-5-mini',
-      temperature: 0,
     });
     expect(created.deepAgentParams?.tools?.map((runtimeTool) => runtimeTool.name)).toEqual([
       'searchProducts',

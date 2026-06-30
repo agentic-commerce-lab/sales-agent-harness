@@ -29,7 +29,6 @@ function createModel(input: CreateLangGraphDeepAgentRuntimeInput): DeepAgentMode
   const modelInput = {
     apiKey: input.apiKey,
     model: input.modelName,
-    temperature: 0,
   };
 
   return input.createModel ? input.createModel(modelInput) : new ChatOpenAI(modelInput);
