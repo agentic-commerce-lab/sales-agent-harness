@@ -363,6 +363,8 @@ LangGraph Deep Agents are implemented behind the replaceable runtime boundary in
 
 Shopware is the first commerce backend through the platform-neutral `CommerceAdapter` contract. The agent runtime, customer API, and A2A API call the harness only; they never call Shopware directly.
 
+For extension guidance, see [docs/extending.md](docs/extending.md).
+
 ## MVP Capabilities
 
 Enabled capabilities are configured per agent in `config/agents/demo-sales-agent.json`:
