@@ -78,7 +78,17 @@ Expected response:
 {"status":"ok"}
 ```
 
-### 5. Create a session
+### 5. Open the example UI
+
+Open this URL in a browser:
+
+```text
+http://127.0.0.1:3000/examples/customer-ui
+```
+
+The example UI lets you create a harness session through `/sessions` and send a customer chat message through `/chat`. It is intentionally small and uses the same public HTTP routes as a merchant-owned customer frontend.
+
+### 6. Create a session
 
 Use a server-side Shopware context token from the merchant storefront or app context:
 
@@ -90,7 +100,7 @@ curl -X POST http://127.0.0.1:3000/sessions \
 
 Copy the returned `agentSessionId`. The raw Shopware context token is stored server-side and is not returned.
 
-### 6. Send a chat message
+### 7. Send a chat message
 
 ```bash
 curl -X POST http://127.0.0.1:3000/chat \
@@ -100,15 +110,79 @@ curl -X POST http://127.0.0.1:3000/chat \
 
 The Deep Agents runtime can call only the registered harness tools. The harness applies capability checks, policy checks, response filtering, and audit logging before returning commerce data.
 
-### 7. Try a direct commerce call
+### 8. Try a direct commerce call
 
 Use this when you want to test the harness without waiting for model tool selection:
 
 ```bash
 curl -X POST http://127.0.0.1:3000/commerce/customer \
   -H 'content-type: application/json' \
-  -d '{"agentSessionId":"session-id-from-create-session","capability":"searchProducts","input":{"query":"jacket","limit":3}}'
+  -d '{"agentSessionId":"session-id-from-create-session","capability":"searchProducts","query":"jacket","limit":3}'
 ```
+
+## Testing The Harness
+
+Run the full test suite:
+
+```bash
+bun test
+```
+
+Run the checks used for normal code changes:
+
+```bash
+bun run format:check
+bun run lint
+bun run typecheck
+```
+
+Run the full quality gate before sharing the branch:
+
+```bash
+bun run quality
+```
+
+Fast manual smoke test:
+
+1. Start the service with real `OPENAI_API_KEY` and `SHOPWARE_*` values.
+2. Call `GET /health` and expect `{"status":"ok"}`.
+3. Create a session with `POST /sessions`.
+4. Use the returned `agentSessionId` in `POST /chat`.
+5. Use `POST /commerce/customer` to test deterministic commerce calls without model tool selection.
+6. Use `POST /message:send` to test the A2A-compatible HTTP+JSON entrypoint.
+
+## A2A Connection
+
+The service exposes an A2A-compatible HTTP+JSON surface for buyer-agent experiments:
+
+- `GET /.well-known/agent-card.json`: discovery document with supported interface, capabilities, and commerce skill metadata.
+- `POST /message:send`: buyer-agent message entrypoint using `application/a2a+json`.
+- `POST /commerce/a2a`: harness-native commerce capability endpoint for direct A2A commerce tests.
+- `POST /a2a/messages`: legacy harness chat alias kept for internal demos.
+
+An A2A buyer agent should discover the seller through the Agent Card:
+
+```bash
+curl http://127.0.0.1:3000/.well-known/agent-card.json
+```
+
+Then send a message with the existing harness `agentSessionId` in message metadata:
+
+```bash
+curl -X POST http://127.0.0.1:3000/message:send \
+  -H 'content-type: application/a2a+json' \
+  -H 'A2A-Version: 1.0' \
+  -d '{
+    "message": {
+      "messageId": "msg-1",
+      "role": "ROLE_USER",
+      "parts": [{ "text": "Find waterproof jackets" }],
+      "metadata": { "agentSessionId": "session-id-from-create-session" }
+    }
+  }'
+```
+
+The response is a completed A2A task with an agent message and response artifact. The harness still owns all commerce execution: A2A traffic goes through the same chat runtime, typed tools, policy checks, Shopware adapter, response filtering, and audit log as the customer UI.
 
 ### Fast Troubleshooting
 
@@ -256,6 +330,9 @@ curl -X POST http://127.0.0.1:3000/chat \
 The HTTP surface also exposes:
 
 - `GET /health`
+- `GET /examples/customer-ui`
+- `GET /.well-known/agent-card.json`
+- `POST /message:send`
 - `POST /commerce/customer`
 - `POST /commerce/a2a`
 - `POST /a2a/messages`

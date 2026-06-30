@@ -77,6 +77,76 @@ test('createSalesAgentHttpHandler routes commerce and handoff validation request
   });
 });
 
+test('createSalesAgentHttpHandler exposes A2A discovery and message send endpoints', async () => {
+  const calls: unknown[] = [];
+  const handler = createSalesAgentHttpHandler({
+    app: createSessionChatApp(calls),
+  });
+
+  const cardResponse = await handler.handle(
+    new Request('https://harness.example.test/.well-known/agent-card.json'),
+  );
+  const sendResponse = await handler.handle(
+    a2aRequest('/message:send', {
+      message: {
+        messageId: 'msg-1',
+        role: 'ROLE_USER',
+        parts: [{ text: 'Find waterproof jackets' }],
+        metadata: { agentSessionId: 'session-1' },
+      },
+    }),
+  );
+
+  expect(cardResponse.headers.get('content-type')).toBe('application/a2a+json');
+  expect(await cardResponse.json()).toEqual(createExpectedAgentCard());
+  expect(sendResponse.headers.get('content-type')).toBe('application/a2a+json');
+  expect(await sendResponse.json()).toEqual(createExpectedA2aTask());
+  expect(calls).toContainEqual({
+    route: 'chat',
+    input: { agentSessionId: 'session-1', message: 'Find waterproof jackets' },
+  });
+});
+
+test('createSalesAgentHttpHandler requires A2A-Version on message send requests', async () => {
+  const handler = createSalesAgentHttpHandler({
+    app: createSessionChatApp([]),
+  });
+
+  const response = await handler.handle(
+    a2aRequest(
+      '/message:send',
+      {
+        message: {
+          messageId: 'msg-1',
+          role: 'ROLE_USER',
+          parts: [{ text: 'Find waterproof jackets' }],
+          metadata: { agentSessionId: 'session-1' },
+        },
+      },
+      { includeVersion: false },
+    ),
+  );
+
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ error: 'A2A-Version header must be 1.0' });
+});
+
+test('createSalesAgentHttpHandler serves the example customer UI', async () => {
+  const handler = createSalesAgentHttpHandler({
+    app: createCommerceRoutingApp(),
+  });
+
+  const response = await handler.handle(
+    new Request('https://harness.example.test/examples/customer-ui'),
+  );
+  const html = await response.text();
+
+  expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+  expect(html).toContain('Sales Agent Harness Demo');
+  expect(html).toContain('/sessions');
+  expect(html).toContain('/chat');
+});
+
 function createSessionChatApp(calls: unknown[]): SalesAgentHttpApp {
   return {
     createSession: (input): PublicAgentSession => {
@@ -138,10 +208,87 @@ function createCartSummary() {
   };
 }
 
+function createExpectedAgentCard() {
+  return {
+    name: 'Sales Agent Harness',
+    description:
+      'Merchant-controlled seller agent for safe product search, cart preparation, and checkout handoff.',
+    supportedInterfaces: [
+      {
+        url: 'https://harness.example.test',
+        protocolBinding: 'HTTP+JSON',
+        protocolVersion: '1.0',
+      },
+    ],
+    version: '0.1.0',
+    capabilities: {
+      streaming: false,
+      pushNotifications: false,
+    },
+    defaultInputModes: ['text/plain'],
+    defaultOutputModes: ['text/plain'],
+    skills: [
+      {
+        id: 'seller-agent-commerce',
+        name: 'Seller Agent Commerce',
+        description:
+          'Search products, answer commerce questions, prepare carts, and create non-binding checkout handoffs.',
+        tags: ['commerce', 'shopware', 'cart', 'checkout-handoff'],
+        examples: ['Find waterproof jackets', 'Prepare a cart with two of product product-1'],
+        inputModes: ['text/plain'],
+        outputModes: ['text/plain'],
+      },
+    ],
+  };
+}
+
+function createExpectedA2aTask() {
+  return {
+    task: {
+      id: 'msg-1',
+      contextId: 'session-1',
+      status: {
+        state: 'TASK_STATE_COMPLETED',
+        message: {
+          messageId: 'msg-1-response',
+          role: 'ROLE_AGENT',
+          parts: [{ text: 'Hello' }],
+        },
+      },
+      artifacts: [
+        {
+          artifactId: 'msg-1-artifact',
+          name: 'Seller agent response',
+          parts: [{ text: 'Hello' }],
+          metadata: { toolCalls: [] },
+        },
+      ],
+    },
+  };
+}
+
 function jsonRequest(path: string, body: unknown): Request {
   return new Request(`https://harness.example.test${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+function a2aRequest(
+  path: string,
+  body: unknown,
+  options: { readonly includeVersion?: boolean } = {},
+): Request {
+  const headers = new Headers({ 'content-type': 'application/a2a+json' });
+
+  if (options.includeVersion ?? true) {
+    headers.set('A2A-Version', '1.0');
+  }
+
+  return new Request(`https://harness.example.test${path}`, {
+    method: 'POST',
+    headers,
     body: JSON.stringify(body),
   });
 }

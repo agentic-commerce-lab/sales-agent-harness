@@ -1,8 +1,7 @@
-import { z } from 'zod';
-
-import type { CommerceApiRequest } from '../api/harness-api.js';
-import type { PublicAgentSession } from '../contracts/session.js';
-import type { AgentRuntimeResponse } from '../runtime/agent-runtime.js';
+import { createA2aAgentCard } from './a2a-agent-card.js';
+import { a2aProtocolVersion } from './a2a-constants.js';
+import { handleA2aSendMessage } from './a2a-message.js';
+import { exampleCustomerUiHtml } from './example-customer-ui.js';
 import {
   chatSchema,
   handoffValidationSchema,
@@ -10,26 +9,24 @@ import {
   parseSession,
 } from './http-contracts.js';
 import type {
-  ChatInput,
-  CheckoutHandoffValidationResult,
-  CreateAgentSessionInput,
-} from './sales-agent-app.js';
+  CreateSalesAgentHttpHandlerInput,
+  SalesAgentHttpApp,
+  SalesAgentHttpHandler,
+} from './http-handler-types.js';
+import {
+  a2aResponse,
+  HttpInputError,
+  htmlResponse,
+  isInputError,
+  jsonResponse,
+  toErrorResponse,
+} from './http-responses.js';
 
-export interface SalesAgentHttpApp {
-  readonly commerceA2aApi: { handle(input: CommerceApiRequest): Promise<unknown> };
-  readonly commerceCustomerApi: { handle(input: CommerceApiRequest): Promise<unknown> };
-  createSession(input: CreateAgentSessionInput): PublicAgentSession;
-  chat(input: ChatInput): Promise<AgentRuntimeResponse>;
-  validateCheckoutHandoff(input: { readonly handoffId: string }): CheckoutHandoffValidationResult;
-}
-
-export interface SalesAgentHttpHandler {
-  handle(request: Request): Promise<Response>;
-}
-
-export interface CreateSalesAgentHttpHandlerInput {
-  readonly app: SalesAgentHttpApp;
-}
+export type {
+  CreateSalesAgentHttpHandlerInput,
+  SalesAgentHttpApp,
+  SalesAgentHttpHandler,
+} from './http-handler-types.js';
 
 export function createSalesAgentHttpHandler(
   input: CreateSalesAgentHttpHandlerInput,
@@ -56,6 +53,14 @@ function handleGetRequest(url: URL): Response {
     return jsonResponse({ status: 'ok' });
   }
 
+  if (url.pathname === '/.well-known/agent-card.json') {
+    return a2aResponse(createA2aAgentCard(url.origin));
+  }
+
+  if (url.pathname === '/examples/customer-ui') {
+    return htmlResponse(exampleCustomerUiHtml);
+  }
+
   return jsonResponse({ error: 'Not found' }, 404);
 }
 
@@ -74,6 +79,9 @@ async function handlePostRequest(
     case '/chat':
     case '/a2a/messages':
       return jsonResponse(await app.chat(chatSchema.parse(await readJson(request))));
+    case '/message:send':
+      assertA2aVersion(request);
+      return a2aResponse(await handleA2aSendMessage(app, await readJson(request)));
     case '/commerce/customer':
       return jsonResponse(
         await app.commerceCustomerApi.handle(parseCommerceRequest(await readJson(request))),
@@ -95,21 +103,8 @@ async function readJson(request: Request): Promise<unknown> {
   return request.json();
 }
 
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
-}
-
-function toErrorResponse(error: unknown): { readonly error: string } {
-  if (error instanceof Error) {
-    return { error: error.message };
+function assertA2aVersion(request: Request): void {
+  if (request.headers.get('A2A-Version') !== a2aProtocolVersion) {
+    throw new HttpInputError(`A2A-Version header must be ${a2aProtocolVersion}`);
   }
-
-  return { error: 'Unexpected error' };
-}
-
-function isInputError(error: unknown): boolean {
-  return error instanceof z.ZodError || error instanceof SyntaxError;
 }
