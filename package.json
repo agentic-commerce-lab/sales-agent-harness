@@ -44,6 +44,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "latest",
+    "@types/bun": "^1.3.14",
+    "@types/node": "^26.0.1",
     "fallow": "latest",
     "fta-cli": "latest",
     "husky": "latest",
@@ -51,5 +53,8 @@
     "oxlint": "latest",
     "oxlint-tsgolint": "latest",
     "typescript": "latest"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
   }
 }

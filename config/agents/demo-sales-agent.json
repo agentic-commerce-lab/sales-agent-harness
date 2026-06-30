@@ -1,0 +1,39 @@
+{
+  "agentId": "demo-sales-agent",
+  "merchantId": "demo-shopware-merchant",
+  "enabledCapabilities": [
+    "searchProducts",
+    "getProductDetails",
+    "createCart",
+    "updateCart",
+    "getCartSummary",
+    "prepareCheckoutHandoff"
+  ],
+  "disabledCapabilities": [
+    "quotes",
+    "negotiation",
+    "payments",
+    "orderCreation",
+    "bindingQuotes",
+    "customDiscounts",
+    "customerAccountMutation"
+  ],
+  "policies": {
+    "allowedChannels": ["customer_ui", "a2a", "internal_demo"],
+    "blockedCategories": ["restricted"],
+    "blockedProducts": [],
+    "maxCartValue": {
+      "amount": 1000,
+      "currency": "EUR"
+    },
+    "maxItemQuantity": 5,
+    "allowCheckoutHandoff": true,
+    "requireHumanApprovalForCheckout": false,
+    "unsupportedRegions": [],
+    "confidentialFields": ["margin", "supplierCost", "shopwareContextToken"]
+  },
+  "shopware": {
+    "salesChannelId": "demo-sales-channel",
+    "storefrontBaseUrl": "https://shop.example.test"
+  }
+}
