@@ -302,7 +302,6 @@ The service exposes an A2A-compatible HTTP+JSON surface for buyer-agent experime
 - `GET /.well-known/agent-card.json`: discovery document with supported interface, capabilities, and commerce skill metadata.
 - `POST /message:send`: buyer-agent message entrypoint using `application/a2a+json`.
 - `POST /commerce/a2a`: harness-native commerce capability endpoint for direct A2A commerce tests.
-- `POST /a2a/messages`: legacy harness chat alias kept for internal demos.
 
 An A2A buyer agent should discover the seller through the Agent Card:
 
@@ -479,7 +478,6 @@ The HTTP surface also exposes:
 - `POST /message:send`
 - `POST /commerce/customer`
 - `POST /commerce/a2a`
-- `POST /a2a/messages`
 - `POST /handoff/validate`
 
 The Shopware context token is accepted only at session creation, stored server-side, sent to Store API as `sw-context-token`, and never returned in session, chat, handoff, or commerce responses.

@@ -131,6 +131,22 @@ test('createSalesAgentHttpHandler requires A2A-Version on message send requests'
   expect(await response.json()).toEqual({ error: 'A2A-Version header must be 1.0' });
 });
 
+test('createSalesAgentHttpHandler does not expose legacy A2A message aliases', async () => {
+  const handler = createSalesAgentHttpHandler({
+    app: createSessionChatApp([]),
+  });
+
+  const response = await handler.handle(
+    jsonRequest('/a2a/messages', {
+      agentSessionId: 'session-1',
+      message: 'Find jackets',
+    }),
+  );
+
+  expect(response.status).toBe(404);
+  expect(await response.json()).toEqual({ error: 'Not found' });
+});
+
 test('createSalesAgentHttpHandler serves the example customer UI', async () => {
   const handler = createSalesAgentHttpHandler({
     app: createCommerceRoutingApp(),

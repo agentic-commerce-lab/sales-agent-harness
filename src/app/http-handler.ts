@@ -77,7 +77,6 @@ async function handlePostRequest(
     case '/sessions':
       return jsonResponse(app.createSession(parseSession(await readJson(request))), 201);
     case '/chat':
-    case '/a2a/messages':
       return jsonResponse(await app.chat(chatSchema.parse(await readJson(request))));
     case '/message:send':
       assertA2aVersion(request);
