@@ -1,6 +1,12 @@
 export { createA2aApi } from './api/a2a-api.js';
 export { createCustomerApi } from './api/customer-api.js';
 export { dispatchCommerceRequest } from './api/harness-api.js';
+export {
+  createConfiguredSalesAgentHarnessApp,
+  createRunnableSalesAgentHarnessApp,
+} from './app/bootstrap.js';
+export { createSalesAgentHttpHandler } from './app/http-handler.js';
+export { createSalesAgentHarnessApp } from './app/sales-agent-app.js';
 export type * from './commerce/commerce-adapter.js';
 export { ShopwareAdapter } from './commerce/shopware/shopware-adapter.js';
 export { FetchShopwareStoreApiClient } from './commerce/shopware/shopware-store-api-client.js';
@@ -10,6 +16,7 @@ export type * from './contracts/config.js';
 export type * from './contracts/policy.js';
 export type * from './contracts/session.js';
 export { loadAgentRuntimeEnvironmentConfig } from './env/agent-runtime-config.js';
+export { loadApplicationEnvironmentConfig } from './env/app-config.js';
 export { loadShopwareEnvironmentConfig } from './env/shopware-config.js';
 export { InMemoryHandoffStore } from './handoff/handoff-store.js';
 export { prepareCheckoutHandoff } from './handoff/prepare-checkout-handoff.js';

@@ -8,6 +8,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "start": "bun run src/server.ts",
+    "dev": "bun --watch src/server.ts",
     "format": "biome check --write .",
     "format:check": "biome ci .",
     "lint": "oxlint",

@@ -3,6 +3,14 @@ export interface Money {
   readonly currency: string;
 }
 
+export interface CommerceExecutionContext {
+  readonly shopwareSalesChannelId: string;
+  /**
+   * Server-side only. Never expose this through customer, A2A, model, URL, or audit payloads.
+   */
+  readonly shopwareContextToken: string;
+}
+
 export interface ProductSummary {
   readonly id: string;
   readonly label: string;
@@ -38,19 +46,23 @@ export interface CartSummary {
 export interface SearchProductsInput {
   readonly query: string;
   readonly limit?: number;
+  readonly executionContext?: CommerceExecutionContext;
 }
 
 export interface ProductDetailsInput {
   readonly productId: string;
+  readonly executionContext?: CommerceExecutionContext;
 }
 
 export interface CreateCartInput {
   readonly items: readonly CartItemInput[];
+  readonly executionContext?: CommerceExecutionContext;
 }
 
 export interface UpdateCartInput {
   readonly cartId: string;
   readonly items: readonly CartItemInput[];
+  readonly executionContext?: CommerceExecutionContext;
 }
 
 export interface CartItemInput {
@@ -60,10 +72,12 @@ export interface CartItemInput {
 
 export interface CartSummaryInput {
   readonly cartId: string;
+  readonly executionContext?: CommerceExecutionContext;
 }
 
 export interface CheckoutHandoffInput {
   readonly cartId: string;
+  readonly executionContext?: CommerceExecutionContext;
 }
 
 export interface ProductSearchResult {

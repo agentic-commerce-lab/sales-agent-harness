@@ -96,6 +96,58 @@ const runtime = createLangGraphDeepAgentRuntime({
 
 The runtime uses `deepagents` with `ChatOpenAI` and LangChain structured tools. Tool calls receive the active `agentSessionId` from the runtime request and delegate back into the harness. The model never receives direct Shopware, Store API, UCP, MCP, or adapter access.
 
+## Running Locally
+
+Set the runtime and Shopware environment:
+
+```bash
+export OPENAI_API_KEY=...
+export SHOPWARE_BASE_URL=https://your-shop.example
+export SHOPWARE_STORE_API_ACCESS_KEY=...
+export SHOPWARE_DEFAULT_SALES_CHANNEL_ID=...
+```
+
+Optional environment:
+
+- `AGENT_CONFIG_PATH`, defaulting to `config/agents/demo-sales-agent.json`
+- `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
+- `AGENT_RUNTIME_PROVIDER`, currently `deep_agents`
+- `COMMERCE_ADAPTER_PROVIDER`, currently `shopware`
+- `HOST`, defaulting to `127.0.0.1`
+- `PORT`, defaulting to `3000`
+
+Start the service:
+
+```bash
+bun run start
+```
+
+Create a session with a server-side Shopware context token from the merchant storefront/app context:
+
+```bash
+curl -X POST http://127.0.0.1:3000/sessions \
+  -H 'content-type: application/json' \
+  -d '{"channel":"customer_ui","shopwareContextToken":"server-side-context-token","customerContext":{"region":"DE"}}'
+```
+
+Then send a chat message:
+
+```bash
+curl -X POST http://127.0.0.1:3000/chat \
+  -H 'content-type: application/json' \
+  -d '{"agentSessionId":"session-id-from-create-session","message":"Find waterproof jackets"}'
+```
+
+The HTTP surface also exposes:
+
+- `GET /health`
+- `POST /commerce/customer`
+- `POST /commerce/a2a`
+- `POST /a2a/messages`
+- `POST /handoff/validate`
+
+The Shopware context token is accepted only at session creation, stored server-side, sent to Store API as `sw-context-token`, and never returned in session, chat, handoff, or commerce responses.
+
 ## Checkout Handoff
 
 Checkout handoff is preparation only. The harness creates a short-lived opaque handoff token and returns a `continueUrl` like:

@@ -9,6 +9,7 @@ import type { InMemoryHandoffStore } from '../handoff/handoff-store.js';
 import { prepareCheckoutHandoff } from '../handoff/prepare-checkout-handoff.js';
 import type { AuditLogger } from '../observability/audit-log.js';
 import type { InMemorySessionStore } from '../session/session-store.js';
+import { maxItemQuantity, withCommerceContext } from './harness-commerce-context.js';
 import { createHarnessExecutor, type HarnessExecutor } from './harness-executor.js';
 import type { HarnessRequest } from './harness-types.js';
 
@@ -43,36 +44,46 @@ export class HarnessCore {
 
   // fallow-ignore-next-line unused-class-member
   async searchProducts(input: HarnessRequest & SearchProductsInput) {
-    return this.#executor.execute('searchProducts', input, () =>
-      this.#adapter.searchProducts(input),
+    return this.#executor.execute('searchProducts', input, (session) =>
+      this.#adapter.searchProducts(withCommerceContext(input, session)),
     );
   }
 
   // fallow-ignore-next-line unused-class-member
   async getProductDetails(input: HarnessRequest & ProductDetailsInput) {
-    return this.#executor.execute('getProductDetails', input, () =>
-      this.#adapter.getProductDetails(input),
+    return this.#executor.execute('getProductDetails', input, (session) =>
+      this.#adapter.getProductDetails(withCommerceContext(input, session)),
     );
   }
 
   // fallow-ignore-next-line unused-class-member
   async createCart(input: HarnessRequest & CreateCartInput) {
-    return this.#executor.execute('createCart', input, () => this.#adapter.createCart(input), {
-      maxItemQuantity: maxItemQuantity(input.items),
-    });
+    return this.#executor.execute(
+      'createCart',
+      input,
+      (session) => this.#adapter.createCart(withCommerceContext(input, session)),
+      {
+        maxItemQuantity: maxItemQuantity(input.items),
+      },
+    );
   }
 
   // fallow-ignore-next-line unused-class-member
   async updateCart(input: HarnessRequest & { readonly cartId: string } & CreateCartInput) {
-    return this.#executor.execute('updateCart', input, () => this.#adapter.updateCart(input), {
-      maxItemQuantity: maxItemQuantity(input.items),
-    });
+    return this.#executor.execute(
+      'updateCart',
+      input,
+      (session) => this.#adapter.updateCart(withCommerceContext(input, session)),
+      {
+        maxItemQuantity: maxItemQuantity(input.items),
+      },
+    );
   }
 
   // fallow-ignore-next-line unused-class-member
   async getCartSummary(input: HarnessRequest & { readonly cartId: string }) {
-    return this.#executor.execute('getCartSummary', input, () =>
-      this.#adapter.getCartSummary(input),
+    return this.#executor.execute('getCartSummary', input, (session) =>
+      this.#adapter.getCartSummary(withCommerceContext(input, session)),
     );
   }
 
@@ -85,7 +96,7 @@ export class HarnessCore {
         throw new Error(`Agent session ${session.agentSessionId} has no commerce context`);
       }
 
-      const summary = await this.#adapter.getCartSummary({ cartId: input.cartId });
+      const summary = await this.#adapter.getCartSummary(withCommerceContext(input, session));
       const handoff = prepareCheckoutHandoff({
         store: this.#handoffStore,
         agentSessionId: session.agentSessionId,
@@ -105,8 +116,4 @@ export class HarnessCore {
       return handoff;
     });
   }
-}
-
-function maxItemQuantity(items: readonly { readonly quantity: number }[]): number {
-  return Math.max(0, ...items.map((item) => item.quantity));
 }
