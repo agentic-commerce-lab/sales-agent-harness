@@ -24,6 +24,10 @@ export function createHarness(
   input: CreateSalesAgentHarnessAppInput,
   context: AppContext,
 ): HarnessCore {
+  const checkoutHandoffOptions = input.checkoutHandoffMode
+    ? { checkoutHandoffMode: input.checkoutHandoffMode }
+    : {};
+
   return new HarnessCore({
     config: input.config,
     adapter: input.adapter,
@@ -31,5 +35,6 @@ export function createHarness(
     handoffStore: context.handoffStore,
     sessionStore: context.sessionStore,
     now: context.now,
+    ...checkoutHandoffOptions,
   });
 }

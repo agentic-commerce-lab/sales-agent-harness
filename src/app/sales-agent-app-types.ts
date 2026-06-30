@@ -48,6 +48,7 @@ export interface SalesAgentHarnessApp {
 export interface CreateSalesAgentHarnessAppInput {
   readonly config: AgentHarnessConfig;
   readonly adapter: CommerceAdapter;
+  readonly checkoutHandoffMode?: 'local' | 'adapter';
   readonly runtimeFactory: (input: {
     readonly tools: ReturnType<typeof createExecutableToolRegistry>;
   }) => AgentRuntime;

@@ -52,7 +52,10 @@ Do not duplicate commerce logic in runtime prompts or provider adapters. The pro
 
 ## Adding A New Commerce Adapter
 
-Use this when adding UCP, another ecommerce platform, or a non-Shopware backend.
+Use this when adding another ecommerce platform or provider transport. The built-in examples are:
+
+- `src/commerce/shopware`: direct Shopware Store API adapter.
+- `src/commerce/shopware-ucp`: Agentic Commerce plugin UCP REST adapter.
 
 1. Implement the `CommerceAdapter` contract from `src/contracts/commerce.ts`.
 2. Create a folder under `src/commerce/<provider>/`.
@@ -62,6 +65,8 @@ Use this when adding UCP, another ecommerce platform, or a non-Shopware backend.
 6. Add a provider value to `src/env/app-config.ts`.
 7. Wire the provider in `src/app/bootstrap.ts`.
 8. Add adapter tests with mocked provider responses.
+
+If the provider owns checkout continuation, set `checkoutHandoffMode: 'adapter'` when creating the app. Otherwise leave the default local mode, where the harness creates an opaque handoff token and stores it server-side.
 
 Adapters should not evaluate merchant policy. They should execute already-approved commerce operations and return normalized results. Policy remains in the harness.
 

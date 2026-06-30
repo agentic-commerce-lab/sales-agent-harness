@@ -3,6 +3,7 @@ import type { AgentRuntimeMessage } from '../runtime/agent-runtime.js';
 export class InMemoryConversationStore {
   readonly #messagesBySessionId = new Map<string, AgentRuntimeMessage[]>();
 
+  // fallow-ignore-next-line unused-class-member
   appendUserMessage(agentSessionId: string, content: string): readonly AgentRuntimeMessage[] {
     const nextMessages: AgentRuntimeMessage[] = [
       ...this.getMessages(agentSessionId),
@@ -13,6 +14,7 @@ export class InMemoryConversationStore {
     return nextMessages;
   }
 
+  // fallow-ignore-next-line unused-class-member
   appendAssistantMessage(agentSessionId: string, content: string): readonly AgentRuntimeMessage[] {
     const nextMessages: AgentRuntimeMessage[] = [
       ...this.getMessages(agentSessionId),

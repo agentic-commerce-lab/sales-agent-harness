@@ -29,6 +29,18 @@ describe('loadApplicationEnvironmentConfig', () => {
     });
   });
 
+  test('accepts the Agentic Commerce UCP Shopware adapter provider', () => {
+    const config = loadApplicationEnvironmentConfig({
+      OPENAI_API_KEY: 'test-key',
+      SHOPWARE_BASE_URL: 'https://shop.example.test',
+      SHOPWARE_STORE_API_ACCESS_KEY: 'store-api-key',
+      SHOPWARE_DEFAULT_SALES_CHANNEL_ID: 'sales-channel-1',
+      COMMERCE_ADAPTER_PROVIDER: 'ucp_shopware',
+    });
+
+    expect(config.commerceAdapterProvider).toBe('ucp_shopware');
+  });
+
   test('rejects unsupported runtime or commerce providers', () => {
     expect(() =>
       loadApplicationEnvironmentConfig({

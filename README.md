@@ -42,11 +42,23 @@ Optional values:
 - `AGENT_CONFIG_PATH`, defaulting to `config/agents/demo-sales-agent.json`
 - `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
 - `AGENT_RUNTIME_PROVIDER`, currently `deep_agents`
-- `COMMERCE_ADAPTER_PROVIDER`, currently `shopware`
+- `COMMERCE_ADAPTER_PROVIDER`, `shopware` by default, or `ucp_shopware` for the Agentic Commerce UCP plugin adapter
 - `HOST`, defaulting to `127.0.0.1`
 - `PORT`, defaulting to `3000`
 
 The service reads environment variables through typed config accessors.
+
+### Commerce Adapter Choice
+
+The default `shopware` adapter calls the Shopware Store API directly and keeps checkout handoff as a harness-owned opaque token. Use it when you want the smallest dependency surface or are testing against a plain Shopware Store API.
+
+Set this when the Shopware Agentic Commerce plugin is installed and UCP is enabled for the target sales channel:
+
+```bash
+COMMERCE_ADAPTER_PROVIDER=ucp_shopware
+```
+
+With `ucp_shopware`, catalog/cart calls go through the plugin's UCP REST endpoints under `/ucp/v1`, and `prepareCheckoutHandoff` creates a UCP checkout session and returns the plugin-provided `continueUrl`. The harness still owns runtime orchestration, policy checks, tool exposure, response normalization, and audit logging.
 
 ### 2. Start with Docker
 
@@ -292,7 +304,7 @@ The A2A response wraps the same real-agent output in a completed task. Commerce 
 - Shopware `401` or `403`: verify the Store API access key and sales-channel mapping.
 - Empty results: confirm products are visible in the configured Shopware sales channel.
 - Policy block: check blocked products/categories, `maxItemQuantity`, `maxCartValue`, region, and enabled capabilities in the agent config file.
-- Checkout handoff returns a URL but storefront checkout does not complete: the harness creates the opaque token; the Shopware app handoff page is still future integration work.
+- Checkout handoff returns a harness `/agent-checkout` URL: use `COMMERCE_ADAPTER_PROVIDER=ucp_shopware` with the Agentic Commerce plugin if you want the plugin-generated UCP checkout `continueUrl` instead.
 
 ## A2A Connection
 
@@ -333,7 +345,7 @@ The response is a completed A2A task with an agent message and response artifact
 - `401` or `403` from Shopware: verify the Store API access key belongs to the configured sales channel.
 - Empty product results: verify the Shopware sales channel has visible products and the query matches catalog data.
 - Session not found: create a fresh session and reuse the returned `agentSessionId`.
-- Checkout handoff URL is returned but not usable in a storefront yet: the harness side exists; the Shopware app page that resolves the opaque token and redirects to checkout is future integration work.
+- Checkout handoff URL is a harness opaque-token URL: use `COMMERCE_ADAPTER_PROVIDER=ucp_shopware` when the Agentic Commerce plugin should own the UCP checkout continuation URL.
 
 ## Architecture
 
@@ -445,7 +457,7 @@ Optional environment:
 - `AGENT_CONFIG_PATH`, defaulting to `config/agents/demo-sales-agent.json`
 - `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
 - `AGENT_RUNTIME_PROVIDER`, currently `deep_agents`
-- `COMMERCE_ADAPTER_PROVIDER`, currently `shopware`
+- `COMMERCE_ADAPTER_PROVIDER`, `shopware` by default, or `ucp_shopware`
 - `HOST`, defaulting to `127.0.0.1`
 - `PORT`, defaulting to `3000`
 
@@ -485,13 +497,15 @@ The optional Shopware context token is accepted only at session creation from tr
 
 ## Checkout Handoff
 
-Checkout handoff is preparation only. The harness creates a short-lived opaque handoff token and returns a `continueUrl` like:
+Checkout handoff is preparation only. With the default `shopware` adapter, the harness creates a short-lived opaque handoff token and returns a `continueUrl` like:
 
 ```text
 https://shop.example.test/agent-checkout?h=handoff_...
 ```
 
-Raw Shopware context tokens stay server-side in session and handoff stores. A future Shopware app page can resolve the opaque token, recreate the prepared cart in the customer context through Context Gateway, and redirect the customer to merchant-controlled checkout.
+Raw Shopware context tokens stay server-side in session and handoff stores.
+
+With `COMMERCE_ADAPTER_PROVIDER=ucp_shopware`, the harness delegates handoff creation to the `ShopwareUcpAdapter`. That adapter reads the UCP cart, creates a UCP checkout session through the Agentic Commerce plugin, and returns the plugin's `continueUrl`, for example an embedded UCP checkout URL.
 
 ## Observability
 
@@ -501,7 +515,6 @@ Structured audit events cover sessions, user requests, agent responses, tool cal
 
 The MVP intentionally leaves these as future integrations:
 
-- Shopware UCP protocol execution
 - Shopware MCP admin, diagnostic, and backoffice workflows
 - Checkout Gateway enforcement
 - Payment authorization protocols

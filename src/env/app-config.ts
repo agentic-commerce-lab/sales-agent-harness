@@ -10,7 +10,7 @@ import {
 } from './shopware-config.js';
 
 export type AgentRuntimeProvider = 'deep_agents';
-export type CommerceAdapterProvider = 'shopware';
+export type CommerceAdapterProvider = 'shopware' | 'ucp_shopware';
 
 export interface ApplicationEnvironmentConfig {
   readonly agentConfigPath: string;
@@ -82,7 +82,7 @@ function parseRuntimeProvider(value: string): AgentRuntimeProvider {
 }
 
 function parseCommerceAdapterProvider(value: string): CommerceAdapterProvider {
-  if (value === 'shopware') {
+  if (value === 'shopware' || value === 'ucp_shopware') {
     return value;
   }
 

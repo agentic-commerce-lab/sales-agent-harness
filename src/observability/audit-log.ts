@@ -13,7 +13,11 @@ export type AuditEventType =
   | 'checkout_handoff'
   | 'error';
 
-export type AuditDataSource = 'shopware_store_api' | 'policy_config' | 'session_store';
+export type AuditDataSource =
+  | 'shopware_store_api'
+  | 'shopware_ucp'
+  | 'policy_config'
+  | 'session_store';
 
 export interface AuditEvent {
   readonly type: AuditEventType;

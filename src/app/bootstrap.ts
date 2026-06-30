@@ -1,5 +1,7 @@
 import { ShopwareAdapter } from '../commerce/shopware/shopware-adapter.js';
 import { FetchShopwareStoreApiClient } from '../commerce/shopware/shopware-store-api-client.js';
+import { ShopwareUcpAdapter } from '../commerce/shopware-ucp/shopware-ucp-adapter.js';
+import { FetchShopwareUcpClient } from '../commerce/shopware-ucp/shopware-ucp-client.js';
 import { loadAgentHarnessConfig } from '../config/load-agent-config.js';
 import type { AgentHarnessConfig } from '../contracts/config.js';
 import {
@@ -19,14 +21,24 @@ export function createRunnableSalesAgentHarnessApp(
   input: CreateRunnableSalesAgentHarnessAppInput,
 ): SalesAgentHarnessApp {
   const agentConfig = withRuntimeShopwareConfig(input.agentConfig, input.environment);
-  const adapter = new ShopwareAdapter({
-    client: new FetchShopwareStoreApiClient(input.environment.shopware, input.fetchImplementation),
-    confidentialFields: agentConfig.policies.confidentialFields,
-  });
+  const adapter =
+    input.environment.commerceAdapterProvider === 'ucp_shopware'
+      ? new ShopwareUcpAdapter({
+          client: new FetchShopwareUcpClient(input.environment.shopware, input.fetchImplementation),
+        })
+      : new ShopwareAdapter({
+          client: new FetchShopwareStoreApiClient(
+            input.environment.shopware,
+            input.fetchImplementation,
+          ),
+          confidentialFields: agentConfig.policies.confidentialFields,
+        });
 
   return createSalesAgentHarnessApp({
     config: agentConfig,
     adapter,
+    checkoutHandoffMode:
+      input.environment.commerceAdapterProvider === 'ucp_shopware' ? 'adapter' : 'local',
     runtimeFactory: ({ tools }) =>
       createLangGraphDeepAgentRuntime({
         apiKey: input.environment.runtime.apiKey,

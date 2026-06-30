@@ -20,6 +20,7 @@ export interface HarnessCoreOptions {
   readonly handoffStore: InMemoryHandoffStore;
   readonly sessionStore: InMemorySessionStore;
   readonly now?: () => Date;
+  readonly checkoutHandoffMode?: 'local' | 'adapter';
 }
 
 export type { HarnessRequest, HarnessResponse } from './harness-types.js';
@@ -29,11 +30,13 @@ export class HarnessCore {
   readonly #adapter: CommerceAdapter;
   readonly #executor: HarnessExecutor;
   readonly #handoffStore: InMemoryHandoffStore;
+  readonly #checkoutHandoffMode: 'local' | 'adapter';
 
   constructor(options: HarnessCoreOptions) {
     this.#config = options.config;
     this.#adapter = options.adapter;
     this.#handoffStore = options.handoffStore;
+    this.#checkoutHandoffMode = options.checkoutHandoffMode ?? 'local';
     this.#executor = createHarnessExecutor({
       config: options.config,
       auditLogger: options.auditLogger,
@@ -96,7 +99,18 @@ export class HarnessCore {
         throw new Error(`Agent session ${session.agentSessionId} has no commerce context`);
       }
 
-      const summary = await this.#adapter.getCartSummary(withCommerceContext(input, session));
+      const adapterInput = withCommerceContext(input, session);
+
+      if (this.#checkoutHandoffMode === 'adapter') {
+        const handoff = await this.#adapter.prepareCheckoutHandoff(adapterInput);
+        this.#executor.recordAudit(session, 'checkout_handoff', 'prepareCheckoutHandoff', {
+          cartId: handoff.summary.cartId,
+        });
+
+        return handoff;
+      }
+
+      const summary = await this.#adapter.getCartSummary(adapterInput);
       const handoff = prepareCheckoutHandoff({
         store: this.#handoffStore,
         agentSessionId: session.agentSessionId,
