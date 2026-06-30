@@ -82,7 +82,13 @@ test('createSalesAgentHarnessApp routes chat through the configured agent runtim
     message: 'Find a jacket',
   });
 
-  expect(runtimeInputs).toEqual([{ agentSessionId: 'session-1', message: 'Find a jacket' }]);
+  expect(runtimeInputs).toEqual([
+    {
+      agentSessionId: 'session-1',
+      message: 'Find a jacket',
+      messages: [{ role: 'user', content: 'Find a jacket' }],
+    },
+  ]);
   expect(response).toEqual({
     message: 'Runtime response',
     toolCalls: ['searchProducts'],
@@ -91,6 +97,65 @@ test('createSalesAgentHarnessApp routes chat through the configured agent runtim
     'session_created',
     'user_request',
     'agent_response',
+  ]);
+});
+
+test('createSalesAgentHarnessApp passes session conversation history to the runtime', async () => {
+  const runtimeInputs: unknown[] = [];
+  const app = createSalesAgentHarnessApp({
+    config: createConfig(),
+    adapter: createAdapter(),
+    runtimeFactory: () =>
+      createRuntime(runtimeInputs, [
+        { message: 'Created cart draft with ID: cart', toolCalls: ['createCart'] },
+        { message: 'Prepared checkout handoff.', toolCalls: ['prepareCheckoutHandoff'] },
+      ]),
+    createId: () => 'session-1',
+    now: () => new Date('2026-06-30T10:00:00.000Z'),
+  });
+  app.createSession({
+    channel: 'a2a',
+    shopwareContextToken: 'secret-shopware-context',
+  });
+
+  await app.chat({
+    agentSessionId: 'session-1',
+    message: 'Add product 3ac014f329884b57a2cce5a29f34779c to a cart.',
+  });
+  await app.chat({
+    agentSessionId: 'session-1',
+    message: 'Prepare checkout for that cart.',
+  });
+
+  expect(runtimeInputs).toEqual([
+    {
+      agentSessionId: 'session-1',
+      message: 'Add product 3ac014f329884b57a2cce5a29f34779c to a cart.',
+      messages: [
+        {
+          role: 'user',
+          content: 'Add product 3ac014f329884b57a2cce5a29f34779c to a cart.',
+        },
+      ],
+    },
+    {
+      agentSessionId: 'session-1',
+      message: 'Prepare checkout for that cart.',
+      messages: [
+        {
+          role: 'user',
+          content: 'Add product 3ac014f329884b57a2cce5a29f34779c to a cart.',
+        },
+        {
+          role: 'assistant',
+          content: 'Created cart draft with ID: cart',
+        },
+        {
+          role: 'user',
+          content: 'Prepare checkout for that cart.',
+        },
+      ],
+    },
   ]);
 });
 
@@ -163,15 +228,22 @@ function createConfig(): AgentHarnessConfig {
   };
 }
 
-function createRuntime(inputs: unknown[] = []): AgentRuntime {
+function createRuntime(
+  inputs: unknown[] = [],
+  responses: readonly { readonly message: string; readonly toolCalls: readonly string[] }[] = [],
+): AgentRuntime {
+  const queuedResponses = [...responses];
+
   return {
     respond: async (input) => {
       inputs.push(input);
 
-      return {
-        message: 'Runtime response',
-        toolCalls: ['searchProducts'],
-      };
+      return (
+        queuedResponses.shift() ?? {
+          message: 'Runtime response',
+          toolCalls: ['searchProducts'],
+        }
+      );
     },
   };
 }

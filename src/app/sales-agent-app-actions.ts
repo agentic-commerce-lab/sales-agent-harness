@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { InMemoryHandoffStore } from '../handoff/handoff-store.js';
 import { HarnessCore } from '../harness/harness-core.js';
 import { InMemoryAuditLogger } from '../observability/audit-log.js';
+import { InMemoryConversationStore } from '../session/conversation-store.js';
 import { InMemorySessionStore } from '../session/session-store.js';
 import type { AppContext, CreateSalesAgentHarnessAppInput } from './sales-agent-app-types.js';
 
@@ -11,6 +12,7 @@ export function createAppContext(input: CreateSalesAgentHarnessAppInput): AppCon
 
   return {
     auditLogger: input.auditLogger ?? new InMemoryAuditLogger(),
+    conversationStore: input.conversationStore ?? new InMemoryConversationStore(),
     createId: input.createId ?? (() => randomUUID()),
     handoffStore: input.handoffStore ?? new InMemoryHandoffStore({ now }),
     now,

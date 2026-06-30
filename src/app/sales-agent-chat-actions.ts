@@ -22,7 +22,12 @@ export async function chat(
   }
 
   recordAppAudit(context.auditLogger, session, 'user_request', context.now);
-  const response = await runtime.respond(chatInput);
+  const messages = context.conversationStore.appendUserMessage(
+    chatInput.agentSessionId,
+    chatInput.message,
+  );
+  const response = await runtime.respond({ ...chatInput, messages });
+  context.conversationStore.appendAssistantMessage(chatInput.agentSessionId, response.message);
   recordAppAudit(context.auditLogger, session, 'agent_response', context.now);
 
   return response;

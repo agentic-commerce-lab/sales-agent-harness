@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import type { BaseMessageLike } from '@langchain/core/messages';
 
 import { createAgent } from './langgraph-agent.js';
 import { normalizeDeepAgentResponse } from './langgraph-response.js';
@@ -6,6 +7,7 @@ import type {
   CreateLangGraphDeepAgentRuntimeInput,
   DeepAgentGraph,
   LangGraphRuntimeInput,
+  LangGraphRuntimeMessage,
   LangGraphRuntimeResponse,
   RuntimeToolExecutionContext,
 } from './langgraph-types.js';
@@ -34,7 +36,7 @@ export class LangGraphDeepAgentRuntime {
   async respond(input: LangGraphRuntimeInput): Promise<LangGraphRuntimeResponse> {
     const result = await this.#toolContext.run({ agentSessionId: input.agentSessionId }, () =>
       this.#agent.invoke({
-        messages: [{ role: 'user', content: input.message }],
+        messages: toLangChainMessages(input.messages ?? [{ role: 'user', content: input.message }]),
         agentSessionId: input.agentSessionId,
       }),
     );
@@ -50,4 +52,8 @@ export function createLangGraphDeepAgentRuntime(
   const agent = createAgent(input, toolContext);
 
   return new LangGraphDeepAgentRuntime({ agent, toolContext });
+}
+
+function toLangChainMessages(messages: readonly LangGraphRuntimeMessage[]): BaseMessageLike[] {
+  return messages.map((message) => [message.role === 'user' ? 'human' : 'ai', message.content]);
 }

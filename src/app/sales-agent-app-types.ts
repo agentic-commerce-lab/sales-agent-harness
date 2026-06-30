@@ -8,6 +8,7 @@ import type { createExecutableToolRegistry } from '../harness/executable-tool-re
 import type { HarnessCore } from '../harness/harness-core.js';
 import type { InMemoryAuditLogger } from '../observability/audit-log.js';
 import type { AgentRuntime, AgentRuntimeResponse } from '../runtime/agent-runtime.js';
+import type { InMemoryConversationStore } from '../session/conversation-store.js';
 import type { InMemorySessionStore } from '../session/session-store.js';
 
 export interface CreateAgentSessionInput {
@@ -51,6 +52,7 @@ export interface CreateSalesAgentHarnessAppInput {
     readonly tools: ReturnType<typeof createExecutableToolRegistry>;
   }) => AgentRuntime;
   readonly auditLogger?: InMemoryAuditLogger;
+  readonly conversationStore?: InMemoryConversationStore;
   readonly handoffStore?: InMemoryHandoffStore;
   readonly sessionStore?: InMemorySessionStore;
   readonly createId?: () => string;
@@ -59,6 +61,7 @@ export interface CreateSalesAgentHarnessAppInput {
 
 export interface AppContext {
   readonly auditLogger: InMemoryAuditLogger;
+  readonly conversationStore: InMemoryConversationStore;
   readonly createId: () => string;
   readonly handoffStore: InMemoryHandoffStore;
   readonly now: () => Date;

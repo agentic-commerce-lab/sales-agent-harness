@@ -1,8 +1,14 @@
 import type { HarnessToolDefinition } from '../harness/tool-registry.js';
 
+export interface AgentRuntimeMessage {
+  readonly role: 'user' | 'assistant';
+  readonly content: string;
+}
+
 export interface AgentRuntimeInput {
   readonly agentSessionId: string;
   readonly message: string;
+  readonly messages?: readonly AgentRuntimeMessage[];
 }
 
 export interface AgentRuntimeResponse {

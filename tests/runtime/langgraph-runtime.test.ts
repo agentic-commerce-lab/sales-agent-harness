@@ -44,11 +44,45 @@ describe('createLangGraphDeepAgentRuntime', () => {
     });
 
     expect(created.invocations).toEqual([
-      { messages: [{ role: 'user', content: 'Find jackets' }], agentSessionId: 'session-1' },
+      { messages: [['human', 'Find jackets']], agentSessionId: 'session-1' },
     ]);
     expect(response).toEqual({
       message: 'I found a trusted jacket.',
       toolCalls: ['searchProducts'],
+    });
+  });
+});
+
+describe('createLangGraphDeepAgentRuntime conversation context', () => {
+  test('passes full conversation messages into the Deep Agent', async () => {
+    const created = createRuntimeWithFakeDeepAgent();
+
+    await created.runtime.respond({
+      agentSessionId: 'session-1',
+      message: 'Prepare checkout for that cart.',
+      messages: [
+        {
+          role: 'user',
+          content: 'Add product 3ac014f329884b57a2cce5a29f34779c to a cart.',
+        },
+        {
+          role: 'assistant',
+          content: 'Created cart draft with ID: cart',
+        },
+        {
+          role: 'user',
+          content: 'Prepare checkout for that cart.',
+        },
+      ],
+    });
+
+    expect(created.invocations.at(-1)).toEqual({
+      messages: [
+        ['human', 'Add product 3ac014f329884b57a2cce5a29f34779c to a cart.'],
+        ['ai', 'Created cart draft with ID: cart'],
+        ['human', 'Prepare checkout for that cart.'],
+      ],
+      agentSessionId: 'session-1',
     });
   });
 

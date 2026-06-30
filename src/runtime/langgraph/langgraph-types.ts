@@ -1,10 +1,17 @@
+import type { BaseMessageLike } from '@langchain/core/messages';
 import type { StructuredToolInterface } from '@langchain/core/tools';
 import type { CreateDeepAgentParams } from 'deepagents';
 import type { z } from 'zod';
 
+export interface LangGraphRuntimeMessage {
+  readonly role: 'user' | 'assistant';
+  readonly content: string;
+}
+
 export interface LangGraphRuntimeInput {
   readonly agentSessionId: string;
   readonly message: string;
+  readonly messages?: readonly LangGraphRuntimeMessage[];
 }
 
 export interface LangGraphRuntimeResponse {
@@ -13,7 +20,7 @@ export interface LangGraphRuntimeResponse {
 }
 
 export interface DeepAgentInvokeInput {
-  readonly messages: { readonly role: 'user'; readonly content: string }[];
+  readonly messages: BaseMessageLike[];
   readonly agentSessionId: string;
 }
 
