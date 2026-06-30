@@ -8,13 +8,15 @@ The MVP is a TypeScript service boundary that lets a merchant-controlled sales a
 
 Use this path when you want the fastest local smoke test against a real Shopware Store API.
 
-### 1. Install dependencies
+### 1. Create a local environment file
+
+Copy the example:
 
 ```bash
-bun install
+cp .env.example .env
 ```
 
-### 2. Create a local environment file
+Then fill in the real values in `.env`.
 
 Create `.env` in the project root:
 
@@ -44,15 +46,47 @@ Optional values:
 - `HOST`, defaulting to `127.0.0.1`
 - `PORT`, defaulting to `3000`
 
-The service reads environment variables through typed config accessors. If your shell does not load `.env` automatically, export the file before starting:
+The service reads environment variables through typed config accessors.
+
+### 2. Start with Docker
+
+```bash
+docker compose up --build
+```
+
+Expected output:
+
+```text
+Sales Agent Harness listening on http://0.0.0.0:3000
+```
+
+The service is available on the host at:
+
+```text
+http://127.0.0.1:3000
+```
+
+Stop it with:
+
+```bash
+docker compose down
+```
+
+### 3. Or start with Bun
+
+Install dependencies:
+
+```bash
+bun install
+```
+
+If your shell does not load `.env` automatically, export the file before starting:
 
 ```bash
 set -a
 source .env
 set +a
 ```
-
-### 3. Start the service
 
 ```bash
 bun run start

@@ -1,0 +1,24 @@
+services:
+  sales-agent-harness:
+    build:
+      context: .
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      AGENT_CONFIG_PATH: /app/config/agents/demo-sales-agent.json
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./config:/app/config:ro
+    healthcheck:
+      test:
+        - CMD
+        - bun
+        - -e
+        - "const r = await fetch('http://127.0.0.1:3000/health'); process.exit(r.ok ? 0 : 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
