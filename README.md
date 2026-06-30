@@ -4,98 +4,6 @@ Merchant-side Seller Agent Harness for controlled agentic commerce demos and exp
 
 The MVP is a TypeScript service boundary that lets a merchant-controlled sales agent search products, retrieve product details, prepare carts, summarize carts, and create non-binding checkout handoffs. It does not place orders, execute payments, accept legal terms, negotiate discounts, or create binding quotes.
 
-## Architecture
-
-The harness keeps conversation orchestration separate from commerce execution:
-
-```text
-Customer UI / A2A Buyer Agent
-        |
-        v
-Customer API / A2A API
-        |
-        v
-Replaceable Agent Runtime
-        |
-        v
-Seller Agent Harness Core
-        |
-        v
-CommerceAdapter
-        |
-        v
-Shopware Store API
-```
-
-LangGraph Deep Agents are implemented behind the replaceable runtime boundary in `src/runtime/langgraph/`. Runtime-specific code must not be imported into `src/harness`, `src/commerce`, `src/policy`, or `src/contracts`.
-
-Shopware is the first commerce backend through the platform-neutral `CommerceAdapter` contract. The agent runtime, customer API, and A2A API call the harness only; they never call Shopware directly.
-
-## MVP Capabilities
-
-Enabled capabilities are configured per agent in `config/agents/demo-sales-agent.json`:
-
-- `searchProducts`
-- `getProductDetails`
-- `createCart`
-- `updateCart`
-- `getCartSummary`
-- `prepareCheckoutHandoff`
-
-Disabled capabilities are not registered as tools. Policy checks run before every commerce action, and blocked or escalated actions do not call the adapter.
-
-## Configuration
-
-Agent and merchant policy configuration is config-as-code JSON:
-
-```json
-{
-  "agentId": "demo-sales-agent",
-  "merchantId": "demo-shopware-merchant",
-  "enabledCapabilities": ["searchProducts", "getProductDetails"],
-  "policies": {
-    "allowedChannels": ["customer_ui", "a2a"],
-    "blockedCategories": [],
-    "blockedProducts": [],
-    "maxCartValue": { "amount": 1000, "currency": "EUR" },
-    "maxItemQuantity": 5,
-    "allowCheckoutHandoff": true,
-    "requireHumanApprovalForCheckout": false,
-    "unsupportedRegions": [],
-    "confidentialFields": ["shopwareContextToken", "margin"]
-  }
-}
-```
-
-Shopware environment access is centralized in `src/env/shopware-config.ts`:
-
-- `SHOPWARE_BASE_URL`
-- `SHOPWARE_STORE_API_ACCESS_KEY`
-- `SHOPWARE_DEFAULT_SALES_CHANNEL_ID`
-
-Deep Agents/OpenAI runtime access is centralized in `src/env/agent-runtime-config.ts`:
-
-- `OPENAI_API_KEY`
-- `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
-
-Do not read `process.env` from application code outside typed config accessors.
-
-## Deep Agents Runtime
-
-Create executable harness tools from a config and `HarnessCore`, then pass them into the Deep Agents runtime:
-
-```ts
-const tools = createExecutableToolRegistry(agentConfig, harnessCore);
-const runtimeConfig = loadAgentRuntimeEnvironmentConfig();
-const runtime = createLangGraphDeepAgentRuntime({
-  apiKey: runtimeConfig.apiKey,
-  modelName: runtimeConfig.modelName,
-  tools,
-});
-```
-
-The runtime uses `deepagents` with `ChatOpenAI` and LangChain structured tools. Tool calls receive the active `agentSessionId` from the runtime request and delegate back into the harness. The model never receives direct Shopware, Store API, UCP, MCP, or adapter access.
-
 ## Quick Start
 
 Use this path when you want the fastest local smoke test against a real Shopware Store API.
@@ -210,6 +118,98 @@ curl -X POST http://127.0.0.1:3000/commerce/customer \
 - Empty product results: verify the Shopware sales channel has visible products and the query matches catalog data.
 - Session not found: create a fresh session and reuse the returned `agentSessionId`.
 - Checkout handoff URL is returned but not usable in a storefront yet: the harness side exists; the Shopware app page that resolves the opaque token and redirects to checkout is future integration work.
+
+## Architecture
+
+The harness keeps conversation orchestration separate from commerce execution:
+
+```text
+Customer UI / A2A Buyer Agent
+        |
+        v
+Customer API / A2A API
+        |
+        v
+Replaceable Agent Runtime
+        |
+        v
+Seller Agent Harness Core
+        |
+        v
+CommerceAdapter
+        |
+        v
+Shopware Store API
+```
+
+LangGraph Deep Agents are implemented behind the replaceable runtime boundary in `src/runtime/langgraph/`. Runtime-specific code must not be imported into `src/harness`, `src/commerce`, `src/policy`, or `src/contracts`.
+
+Shopware is the first commerce backend through the platform-neutral `CommerceAdapter` contract. The agent runtime, customer API, and A2A API call the harness only; they never call Shopware directly.
+
+## MVP Capabilities
+
+Enabled capabilities are configured per agent in `config/agents/demo-sales-agent.json`:
+
+- `searchProducts`
+- `getProductDetails`
+- `createCart`
+- `updateCart`
+- `getCartSummary`
+- `prepareCheckoutHandoff`
+
+Disabled capabilities are not registered as tools. Policy checks run before every commerce action, and blocked or escalated actions do not call the adapter.
+
+## Configuration
+
+Agent and merchant policy configuration is config-as-code JSON:
+
+```json
+{
+  "agentId": "demo-sales-agent",
+  "merchantId": "demo-shopware-merchant",
+  "enabledCapabilities": ["searchProducts", "getProductDetails"],
+  "policies": {
+    "allowedChannels": ["customer_ui", "a2a"],
+    "blockedCategories": [],
+    "blockedProducts": [],
+    "maxCartValue": { "amount": 1000, "currency": "EUR" },
+    "maxItemQuantity": 5,
+    "allowCheckoutHandoff": true,
+    "requireHumanApprovalForCheckout": false,
+    "unsupportedRegions": [],
+    "confidentialFields": ["shopwareContextToken", "margin"]
+  }
+}
+```
+
+Shopware environment access is centralized in `src/env/shopware-config.ts`:
+
+- `SHOPWARE_BASE_URL`
+- `SHOPWARE_STORE_API_ACCESS_KEY`
+- `SHOPWARE_DEFAULT_SALES_CHANNEL_ID`
+
+Deep Agents/OpenAI runtime access is centralized in `src/env/agent-runtime-config.ts`:
+
+- `OPENAI_API_KEY`
+- `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
+
+Do not read `process.env` from application code outside typed config accessors.
+
+## Deep Agents Runtime
+
+Create executable harness tools from a config and `HarnessCore`, then pass them into the Deep Agents runtime:
+
+```ts
+const tools = createExecutableToolRegistry(agentConfig, harnessCore);
+const runtimeConfig = loadAgentRuntimeEnvironmentConfig();
+const runtime = createLangGraphDeepAgentRuntime({
+  apiKey: runtimeConfig.apiKey,
+  modelName: runtimeConfig.modelName,
+  tools,
+});
+```
+
+The runtime uses `deepagents` with `ChatOpenAI` and LangChain structured tools. Tool calls receive the active `agentSessionId` from the runtime request and delegate back into the harness. The model never receives direct Shopware, Store API, UCP, MCP, or adapter access.
 
 ## Running Locally
 
