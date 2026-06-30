@@ -55,6 +55,9 @@
     "typescript": "latest"
   },
   "dependencies": {
+    "@langchain/core": "^1.2.1",
+    "@langchain/openai": "^1.5.3",
+    "deepagents": "^1.10.5",
     "zod": "^4.4.3"
   }
 }

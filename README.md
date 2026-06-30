@@ -27,7 +27,7 @@ CommerceAdapter
 Shopware Store API
 ```
 
-LangGraph Deep Agents are represented by the replaceable runtime boundary in `src/runtime/`. Runtime-specific code must not be imported into `src/harness`, `src/commerce`, `src/policy`, or `src/contracts`.
+LangGraph Deep Agents are implemented behind the replaceable runtime boundary in `src/runtime/langgraph/`. Runtime-specific code must not be imported into `src/harness`, `src/commerce`, `src/policy`, or `src/contracts`.
 
 Shopware is the first commerce backend through the platform-neutral `CommerceAdapter` contract. The agent runtime, customer API, and A2A API call the harness only; they never call Shopware directly.
 
@@ -73,7 +73,28 @@ Shopware environment access is centralized in `src/env/shopware-config.ts`:
 - `SHOPWARE_STORE_API_ACCESS_KEY`
 - `SHOPWARE_DEFAULT_SALES_CHANNEL_ID`
 
+Deep Agents/OpenAI runtime access is centralized in `src/env/agent-runtime-config.ts`:
+
+- `OPENAI_API_KEY`
+- `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
+
 Do not read `process.env` from application code outside typed config accessors.
+
+## Deep Agents Runtime
+
+Create executable harness tools from a config and `HarnessCore`, then pass them into the Deep Agents runtime:
+
+```ts
+const tools = createExecutableToolRegistry(agentConfig, harnessCore);
+const runtimeConfig = loadAgentRuntimeEnvironmentConfig();
+const runtime = createLangGraphDeepAgentRuntime({
+  apiKey: runtimeConfig.apiKey,
+  modelName: runtimeConfig.modelName,
+  tools,
+});
+```
+
+The runtime uses `deepagents` with `ChatOpenAI` and LangChain structured tools. Tool calls receive the active `agentSessionId` from the runtime request and delegate back into the harness. The model never receives direct Shopware, Store API, UCP, MCP, or adapter access.
 
 ## Checkout Handoff
 
@@ -134,4 +155,3 @@ bun run quality
 ```
 
 CI remains the final authority.
-

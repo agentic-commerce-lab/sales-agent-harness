@@ -1,34 +1,53 @@
-interface LangGraphRuntimeTool {
-  readonly name: string;
-}
+import { AsyncLocalStorage } from 'node:async_hooks';
 
-interface LangGraphRuntimeInput {
-  readonly agentSessionId: string;
-  readonly message: string;
-}
+import { createAgent } from './langgraph-agent.js';
+import { normalizeDeepAgentResponse } from './langgraph-response.js';
+import type {
+  CreateLangGraphDeepAgentRuntimeInput,
+  DeepAgentGraph,
+  LangGraphRuntimeInput,
+  LangGraphRuntimeResponse,
+  RuntimeToolExecutionContext,
+} from './langgraph-types.js';
 
-interface LangGraphRuntimeResponse {
-  readonly message: string;
-  readonly toolCalls: readonly string[];
-}
-
-export interface LangGraphDeepAgentInvoker {
-  invoke(input: LangGraphRuntimeInput, tools: readonly string[]): Promise<LangGraphRuntimeResponse>;
-}
+export { normalizeDeepAgentResponse } from './langgraph-response.js';
+export type {
+  CreateLangGraphDeepAgentRuntimeInput,
+  // fallow-ignore-next-line unused-type
+  ExecutableLangGraphRuntimeTool,
+  LangGraphRuntimeInput,
+  LangGraphRuntimeResponse,
+} from './langgraph-types.js';
 
 export class LangGraphDeepAgentRuntime {
-  readonly #tools: readonly string[];
-  readonly #invoker: LangGraphDeepAgentInvoker;
+  readonly #agent: DeepAgentGraph;
+  readonly #toolContext: AsyncLocalStorage<RuntimeToolExecutionContext>;
 
   constructor(options: {
-    readonly tools: readonly LangGraphRuntimeTool[];
-    readonly invoker: LangGraphDeepAgentInvoker;
+    readonly agent: DeepAgentGraph;
+    readonly toolContext: AsyncLocalStorage<RuntimeToolExecutionContext>;
   }) {
-    this.#tools = options.tools.map((tool) => tool.name);
-    this.#invoker = options.invoker;
+    this.#agent = options.agent;
+    this.#toolContext = options.toolContext;
   }
 
-  respond(input: LangGraphRuntimeInput): Promise<LangGraphRuntimeResponse> {
-    return this.#invoker.invoke(input, this.#tools);
+  async respond(input: LangGraphRuntimeInput): Promise<LangGraphRuntimeResponse> {
+    const result = await this.#toolContext.run({ agentSessionId: input.agentSessionId }, () =>
+      this.#agent.invoke({
+        messages: [{ role: 'user', content: input.message }],
+        agentSessionId: input.agentSessionId,
+      }),
+    );
+
+    return normalizeDeepAgentResponse(result);
   }
+}
+
+export function createLangGraphDeepAgentRuntime(
+  input: CreateLangGraphDeepAgentRuntimeInput,
+): LangGraphDeepAgentRuntime {
+  const toolContext = new AsyncLocalStorage<RuntimeToolExecutionContext>();
+  const agent = createAgent(input, toolContext);
+
+  return new LangGraphDeepAgentRuntime({ agent, toolContext });
 }

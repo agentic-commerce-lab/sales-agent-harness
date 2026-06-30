@@ -9,15 +9,19 @@ export type * from './contracts/commerce.js';
 export type * from './contracts/config.js';
 export type * from './contracts/policy.js';
 export type * from './contracts/session.js';
+export { loadAgentRuntimeEnvironmentConfig } from './env/agent-runtime-config.js';
 export { loadShopwareEnvironmentConfig } from './env/shopware-config.js';
 export { InMemoryHandoffStore } from './handoff/handoff-store.js';
 export { prepareCheckoutHandoff } from './handoff/prepare-checkout-handoff.js';
 export { HarnessCore } from './harness/harness-core.js';
-export { createToolRegistry } from './harness/tool-registry.js';
+export { createExecutableToolRegistry, createToolRegistry } from './harness/tool-registry.js';
 export { InMemoryAuditLogger } from './observability/audit-log.js';
 export { evaluatePolicy } from './policy/evaluate-policy.js';
 export type * from './runtime/agent-runtime.js';
-export { LangGraphDeepAgentRuntime } from './runtime/langgraph/langgraph-runtime.js';
+export {
+  createLangGraphDeepAgentRuntime,
+  LangGraphDeepAgentRuntime,
+} from './runtime/langgraph/langgraph-runtime.js';
 export { InMemorySessionStore } from './session/session-store.js';
 
 export const projectName = 'sales-agent-harness';
