@@ -1,0 +1,13 @@
+{
+  "skills": [
+    {
+      "name": "acl-quality-gate",
+      "source": "agentic-commerce-lab/acl-skills",
+      "commit": "068739fc20c744054140799d1c44f626c65e6ebc",
+      "pack": "typescript",
+      "mode": "strict",
+      "gatedRoots": ["."],
+      "vendoredSkillPath": "/Users/L.Rump/.local/share/acl-skills/acl-quality-gate"
+    }
+  ]
+}

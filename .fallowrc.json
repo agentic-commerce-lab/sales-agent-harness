@@ -1,0 +1,59 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "rules": {
+    "unused-files": "error",
+    "unused-exports": "warn",
+    "unused-types": "warn",
+    "private-type-leaks": "off",
+    "unused-dependencies": "error",
+    "unused-dev-dependencies": "error",
+    "unused-optional-dependencies": "warn",
+    "unused-enum-members": "warn",
+    "unused-class-members": "warn",
+    "unresolved-imports": "error",
+    "unlisted-dependencies": "error",
+    "duplicate-exports": "error",
+    "circular-dependencies": "error",
+    "re-export-cycle": "error",
+    "boundary-violation": "error",
+    "type-only-dependencies": "error",
+    "test-only-dependencies": "warn",
+    "coverage-gaps": "warn",
+    "stale-suppressions": "error"
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    ".next/**",
+    ".nuxt/**",
+    ".svelte-kit/**",
+    "**/.agents/**",
+    "**/.codex/**",
+    "**/.claude/**",
+    "**/.cursor/**",
+    "**/*.d.ts",
+    "**/*.generated.*",
+    "**/__generated__/**"
+  ],
+  "health": {
+    "maxCyclomatic": 10,
+    "maxCognitive": 12,
+    "ignore": [
+      "**/*.generated.ts",
+      "**/*.generated.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx",
+      "**/*.spec.js",
+      "**/*.spec.jsx",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.test.js",
+      "**/*.test.jsx",
+      "**/__generated__/**"
+    ],
+    "ownership": {
+      "emailMode": "handle"
+    }
+  }
+}

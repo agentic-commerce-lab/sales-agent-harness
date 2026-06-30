@@ -1,0 +1,88 @@
+name: Dependency Freshness Weekly
+
+on:
+  schedule:
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: dependency-freshness-weekly-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  report:
+    name: Weekly dependency report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify package scripts
+        run: |
+          bun -e 'const required = ["quality:deps"]; const pkg = await Bun.file("package.json").json(); const missing = required.filter((script) => typeof pkg.scripts?.[script] !== "string"); if (missing.length > 0) { console.error(`Missing package.json scripts required by this workflow: ${missing.join(", ")}`); console.error("Merge assets/package/package-scripts.fragment.json or provide intentional framework-specific replacements before enabling this workflow."); process.exit(1); }'
+
+      - name: Build dependency report
+        run: |
+          bun run quality:deps > dependency-outdated.txt 2>&1 || true
+
+          {
+            echo "## Dependency freshness"
+            echo
+            echo "Weekly Bun dependency freshness report for \`${GITHUB_REPOSITORY}\`."
+            echo
+            echo "- Workflow run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "- Generated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo
+            echo '```text'
+            cat dependency-outdated.txt
+            echo '```'
+            echo
+            echo "Review wanted updates; prefer security, patch, and minor updates before major migrations."
+          } > dependency-freshness.md
+
+      - name: Create or update dependency freshness issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: Dependency freshness report
+        run: |
+          gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "$ISSUE_TITLE in:title" \
+            --json number,title > open-issues.json
+
+          existing_issue="$(
+            bun -e 'const issues = await Bun.file("open-issues.json").json(); const issue = issues.find((item) => item.title === process.env.ISSUE_TITLE); if (issue) console.log(issue.number);'
+          )"
+
+          label_args=()
+          if gh label create dependency-freshness --color 1f883d --description "Dependency freshness reports" --repo "$GITHUB_REPOSITORY" 2>/dev/null \
+            || gh label list --repo "$GITHUB_REPOSITORY" --search dependency-freshness --json name --jq '.[].name' | grep -qx dependency-freshness; then
+            label_args=(--label dependency-freshness)
+          fi
+
+          if [ -n "$existing_issue" ]; then
+            gh issue edit "$existing_issue" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body-file dependency-freshness.md
+          else
+            gh issue create \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$ISSUE_TITLE" \
+              --body-file dependency-freshness.md \
+              "${label_args[@]}"
+          fi

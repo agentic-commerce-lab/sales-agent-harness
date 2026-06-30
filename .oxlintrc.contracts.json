@@ -1,0 +1,76 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error",
+    "style": "off",
+    "pedantic": "off",
+    "restriction": "off"
+  },
+  "plugins": ["eslint", "typescript", "import", "unicorn", "oxc"],
+  "rules": {
+    "eslint/max-lines": [
+      "error",
+      {
+        "max": 200,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ],
+    "eslint/max-lines-per-function": [
+      "error",
+      {
+        "max": 75,
+        "skipBlankLines": true,
+        "skipComments": true,
+        "IIFEs": true
+      }
+    ],
+    "eslint/max-depth": ["error", 4],
+    "eslint/no-constant-condition": "error",
+    "eslint/no-debugger": "error",
+    "eslint/no-eval": "error",
+    "eslint/no-throw-literal": "error",
+    "eslint/no-unsafe-finally": "error",
+    "eslint/no-unsafe-optional-chaining": "error",
+    "eslint/preserve-caught-error": "error",
+    "import/no-cycle": "error",
+    "import/no-self-import": "error",
+    "oxc/missing-throw": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-deprecated": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-implied-eval": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/only-throw-error": "error",
+    "typescript/prefer-nullish-coalescing": "error",
+    "typescript/prefer-optional-chain": "error",
+    "unicorn/no-empty-file": "error"
+  },
+  "overrides": [
+    {
+      "files": ["**/api.ts", "**/contracts.ts", "**/schemas.ts"],
+      "rules": {
+        "eslint/max-lines": [
+          "error",
+          {
+            "max": 80,
+            "skipBlankLines": true,
+            "skipComments": true
+          }
+        ]
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    "node_modules/**",
+    "**/*.d.ts",
+    "**/*.test.{ts,tsx}",
+    "**/*.spec.{ts,tsx}",
+    "**/*.generated.*"
+  ]
+}

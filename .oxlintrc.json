@@ -1,0 +1,184 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error",
+    "style": "off",
+    "pedantic": "off",
+    "restriction": "off"
+  },
+  "plugins": [
+    "eslint",
+    "typescript",
+    "import",
+    "unicorn",
+    "promise",
+    "react",
+    "jsx-a11y",
+    "nextjs",
+    "oxc",
+    "vue",
+    "node"
+  ],
+  "rules": {
+    "eslint/complexity": ["error", 10],
+    "eslint/max-depth": ["error", 4],
+    "eslint/max-lines": [
+      "error",
+      {
+        "max": 400,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ],
+    "eslint/max-lines-per-function": [
+      "error",
+      {
+        "max": 75,
+        "skipBlankLines": true,
+        "skipComments": true,
+        "IIFEs": true
+      }
+    ],
+    "eslint/max-params": [
+      "error",
+      {
+        "max": 5
+      }
+    ],
+    "eslint/eqeqeq": "error",
+    "eslint/no-constant-condition": "error",
+    "eslint/no-console": "error",
+    "eslint/no-debugger": "error",
+    "eslint/no-eval": "error",
+    "eslint/no-nested-ternary": "error",
+    "eslint/no-param-reassign": "error",
+    "eslint/no-throw-literal": "error",
+    "eslint/no-unsafe-finally": "error",
+    "eslint/no-unsafe-optional-chaining": "error",
+    "eslint/no-useless-catch": "error",
+    "eslint/preserve-caught-error": "error",
+    "eslint/prefer-const": [
+      "error",
+      {
+        "ignoreReadBeforeAssign": true
+      }
+    ],
+    "eslint/use-isnan": "error",
+    "eslint/valid-typeof": "error",
+    "eslint/func-style": "off",
+    "eslint/no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["../*"],
+            "message": "Avoid parent-directory imports across architectural boundaries. Prefer path aliases or package public APIs."
+          }
+        ]
+      }
+    ],
+    "import/no-named-export": "off",
+    "import/prefer-default-export": "off",
+    "import/no-cycle": "error",
+    "import/no-self-import": "error",
+    "oxc/no-accumulating-spread": "error",
+    "oxc/missing-throw": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/await-thenable": "error",
+    "typescript/no-array-delete": "error",
+    "typescript/no-base-to-string": "error",
+    "typescript/no-deprecated": "error",
+    "typescript/no-duplicate-enum-values": "error",
+    "typescript/no-duplicate-type-constituents": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-extra-non-null-assertion": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-for-in-array": "error",
+    "typescript/no-implied-eval": "error",
+    "typescript/no-misused-new": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/no-misused-spread": "error",
+    "typescript/no-non-null-asserted-optional-chain": "error",
+    "typescript/no-redundant-type-constituents": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-unsafe-assignment": "error",
+    "typescript/no-unsafe-call": "error",
+    "typescript/no-unsafe-declaration-merging": "error",
+    "typescript/no-unsafe-member-access": "error",
+    "typescript/no-unsafe-return": "error",
+    "typescript/no-unsafe-unary-minus": "error",
+    "typescript/no-wrapper-object-types": "error",
+    "typescript/only-throw-error": "error",
+    "typescript/prefer-nullish-coalescing": "error",
+    "typescript/prefer-optional-chain": "error",
+    "typescript/require-array-sort-compare": "error",
+    "typescript/restrict-template-expressions": "error",
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/unbound-method": "error",
+    "typescript/use-unknown-in-catch-callback-variable": "error",
+    "unicorn/no-empty-file": "error",
+    "unicorn/no-invalid-fetch-options": "error",
+    "unicorn/no-invalid-remove-event-listener": "error",
+    "unicorn/no-single-promise-in-promise-methods": "error",
+    "unicorn/no-thenable": "error",
+    "unicorn/no-unnecessary-await": "error",
+    "unicorn/no-useless-fallback-in-spread": "error",
+    "unicorn/no-useless-spread": "error",
+    "unicorn/prefer-set-size": "error",
+    "unicorn/prefer-string-starts-ends-with": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.config.{js,cjs,mjs,ts}",
+        "**/scripts/**/*.{js,cjs,mjs,ts}",
+        "**/bin/**/*.{js,cjs,mjs,ts}",
+        "**/migrations/**/*.{js,cjs,mjs,ts}"
+      ],
+      "rules": {
+        "eslint/no-console": "off",
+        "eslint/max-lines": "off",
+        "eslint/no-param-reassign": "off",
+        "eslint/no-await-in-loop": "off",
+        "typescript/no-require-imports": "off"
+      }
+    },
+    {
+      "files": [
+        "**/*.test.{ts,tsx,js,jsx}",
+        "**/*.spec.{ts,tsx,js,jsx}",
+        "**/__tests__/**/*.{ts,tsx,js,jsx}"
+      ],
+      "rules": {
+        "eslint/max-lines": [
+          "warn",
+          {
+            "max": 400,
+            "skipBlankLines": true,
+            "skipComments": true
+          }
+        ]
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    ".next/**",
+    ".nuxt/**",
+    ".svelte-kit/**",
+    "node_modules/**",
+    "**/.agents/**",
+    "**/.codex/**",
+    "**/.claude/**",
+    "**/.cursor/**",
+    "**/*.d.ts"
+  ]
+}

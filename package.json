@@ -1,0 +1,55 @@
+{
+  "name": "sales-agent-harness",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Merchant-side seller agent harness for controlled agentic commerce experiments.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "format": "biome check --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "typecheck": "tsc --noEmit",
+    "contracts:format": "biome check --write --config-path=biome.contracts.json .",
+    "contracts:format:check": "biome ci --config-path=biome.contracts.json .",
+    "contracts:lint": "oxlint -c .oxlintrc.contracts.json --no-error-on-unmatched-pattern shared contracts \"**/*.contract.ts\" \"**/*.contract.tsx\" \"**/*.schema.ts\" \"**/*.schema.tsx\" \"**/*.dto.ts\" \"**/*.dto.tsx\"",
+    "quality:contracts": "bun run contracts:format:check && bun run contracts:lint",
+    "quality:fta": "fta .",
+    "quality:fallow": "fallow dead-code --fail-on-issues",
+    "quality:health": "fallow health --min-score 85 --min-severity high --max-cyclomatic 10 --max-cognitive 12",
+    "quality:audit": "fallow audit --gate all",
+    "quality:deps": "bun outdated",
+    "quality": "bun run format:check && bun run lint && bun run typecheck && bun run quality:contracts && bun run quality:fta && bun run quality:fallow && bun run quality:health && bun run quality:audit",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "biome check --write --no-errors-on-unmatched",
+      "oxlint --no-error-on-unmatched-pattern"
+    ],
+    "*.{json,jsonc,css}": [
+      "biome check --write --no-errors-on-unmatched"
+    ],
+    "{shared,contracts}/**/*.{ts,tsx,json,jsonc}": [
+      "biome check --write --no-errors-on-unmatched --config-path=biome.contracts.json",
+      "oxlint -c .oxlintrc.contracts.json --no-error-on-unmatched-pattern"
+    ],
+    "*.{contract,schema,dto}.{ts,tsx}": [
+      "biome check --write --no-errors-on-unmatched --config-path=biome.contracts.json",
+      "oxlint -c .oxlintrc.contracts.json --no-error-on-unmatched-pattern"
+    ]
+  },
+  "devDependencies": {
+    "@biomejs/biome": "latest",
+    "fallow": "latest",
+    "fta-cli": "latest",
+    "husky": "latest",
+    "lint-staged": "latest",
+    "oxlint": "latest",
+    "oxlint-tsgolint": "latest",
+    "typescript": "latest"
+  }
+}

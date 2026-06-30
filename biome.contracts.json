@@ -1,0 +1,61 @@
+{
+  "$schema": "https://raw.githubusercontent.com/biomejs/biome/main/packages/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "includes": [
+      "shared/**/*.ts",
+      "shared/**/*.tsx",
+      "shared/**/*.json",
+      "shared/**/*.jsonc",
+      "contracts/**/*.ts",
+      "contracts/**/*.tsx",
+      "contracts/**/*.json",
+      "contracts/**/*.jsonc",
+      "**/*.contract.ts",
+      "**/*.contract.tsx",
+      "**/*.schema.ts",
+      "**/*.schema.tsx",
+      "**/*.dto.ts",
+      "**/*.dto.tsx",
+      "!dist",
+      "!build",
+      "!coverage",
+      "!node_modules",
+      "!**/.agents",
+      "!**/.codex",
+      "!**/.claude",
+      "!**/.cursor"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "all",
+      "arrowParentheses": "always"
+    }
+  },
+  "json": {
+    "formatter": {
+      "trailingCommas": "none"
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "linter": {
+    "enabled": false
+  }
+}

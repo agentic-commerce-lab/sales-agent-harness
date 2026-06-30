@@ -1,0 +1,37 @@
+{
+  "score_cap": 50,
+  "include_comments": false,
+  "exclude_under": 6,
+  "output_limit": 5000,
+  "exclude_directories": [
+    "/dist",
+    "/build",
+    "/coverage",
+    "/.next",
+    "/.nuxt",
+    "/.svelte-kit",
+    "/node_modules",
+    "/.agents",
+    "/.codex",
+    "/.claude",
+    "/.cursor"
+  ],
+  "exclude_filenames": [
+    ".d.ts",
+    ".min.js",
+    ".bundle.js",
+    "*.spec.ts",
+    "*.spec.tsx",
+    "*.spec.js",
+    "*.spec.jsx",
+    "*.test.ts",
+    "*.test.tsx",
+    "*.test.js",
+    "*.test.jsx",
+    "*.generated.ts",
+    "*.generated.tsx",
+    ".vue",
+    ".svelte"
+  ],
+  "extensions": [".js", ".jsx", ".ts", ".tsx"]
+}

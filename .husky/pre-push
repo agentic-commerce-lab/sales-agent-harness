@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Type checking is whole-program, so it cannot be scoped to staged files.
+# Run it before sharing work, off the per-commit hot path. Heavier repo
+# intelligence (FTA, Fallow, audit) stays in CI.
+bun run typecheck

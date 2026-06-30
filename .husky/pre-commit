@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Fast pre-commit: format and lint ONLY the staged files via lint-staged.
+# lint-staged stashes unstaged changes during the run and re-stages only the
+# files it touched, so partial stages and unrelated working-tree edits are safe.
+# Full type checking is intentionally left to pre-push and CI to keep commits fast.
+bunx lint-staged

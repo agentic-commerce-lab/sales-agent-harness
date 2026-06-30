@@ -1,0 +1,65 @@
+name: Quality Gate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify package scripts
+        run: |
+          bun -e 'const required = ["format:check", "lint", "typecheck", "quality:contracts", "quality:fta", "quality:fallow", "quality:health", "quality:audit"]; const pkg = await Bun.file("package.json").json(); const missing = required.filter((script) => typeof pkg.scripts?.[script] !== "string"); if (missing.length > 0) { console.error(`Missing package.json scripts required by this workflow: ${missing.join(", ")}`); console.error("Merge assets/package/package-scripts.fragment.json or provide intentional framework-specific replacements before enabling this workflow."); process.exit(1); }'
+
+      - name: Format
+        run: bun run format:check
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Shared contract structure
+        run: bun run quality:contracts
+
+      - name: FTA maintainability
+        run: bun run quality:fta
+
+      - name: Fallow dead code and dependencies
+        run: bun run quality:fallow
+
+      - name: Fallow health
+        run: bun run quality:health
+
+      # Audit is scoped to files changed since the merge-base with the upstream
+      # default branch, so it primarily gates pull requests. On push to main it is
+      # effectively a no-op; the full-repo gates above are the authority there.
+      - name: Fallow audit
+        run: bun run quality:audit

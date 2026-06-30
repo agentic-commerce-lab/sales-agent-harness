@@ -1,3 +1,63 @@
+# Project Conventions
+
+This project runs the ACL quality gate in strict mode. Follow these conventions when writing
+or refactoring code; CI enforces the mechanical gate.
+
+## Commands
+
+- Format + lint a change: `bun run format:check && bun run lint`
+- Add type checking for code changes: `bun run typecheck`
+- Architecture, import, or cleanup changes: `bun run quality:fallow && bun run quality:health`
+- Broad refactor or gate change: `bun run quality`
+- Run the narrowest useful check for the change; rely on CI as the authority.
+
+## TypeScript
+
+- Strict mode is on. Do not bypass it with `any`, unsafe casts, or broad `unknown` assertions.
+- Prefer optional chaining and nullish coalescing where they express intent more safely.
+- Keep commerce contracts typed and explicit.
+- Keep runtime-specific LangGraph code behind boundaries so the harness can support other runtimes later.
+
+## Logging
+
+- Use a project logger once one exists; never `console` in application code.
+- `console` is allowed in scripts, CLIs, migrations, and config.
+- Use structured fields, intentional levels, and no secrets or PII.
+- Log the error object or `cause`, not just `error.message`.
+
+## Error Handling
+
+- Throw `Error` or domain-specific `Error` subclasses only.
+- Preserve the original error via `cause` when wrapping.
+- Narrow `unknown` before reading properties.
+- Do not `return`, `throw`, `break`, or `continue` from `finally`.
+
+## Shared Contracts
+
+- Validate boundary data at runtime once a validation library is introduced.
+- Prefer Zod for new shared contracts unless the project records a different decision.
+- Extend existing shared contracts instead of duplicating request and response types.
+- Keep contract files small and domain-oriented.
+
+## Environment Config
+
+- Add a typed config accessor before application code needs environment variables.
+- Do not scatter raw `process.env` reads through application code.
+- Keep `.env*` at the project root and never commit real secrets.
+
+## Structure
+
+- Place code at the smallest cohesive boundary that owns it.
+- Prefer domain, feature, or infrastructure folders over generic `utils`, `helpers`, or `common` dumping grounds.
+- Import through package public APIs or future path aliases, not parent-directory shortcuts across boundaries.
+- Before adding a repeated literal, URL, limit, timeout, flag key, or identifier, reuse or introduce a typed constant.
+
+## Review Instructions
+
+When reviewing code here, invoke the `acl-quality-gate` skill and follow its quality-pass
+workflow. Run the in-scope commands above, then read the change against these conventions.
+Treat CI as the final authority; never relax a threshold to make a review pass.
+
 # Project Guidance for Agents
 
 This project defines and validates a Merchant-Side Seller Agent Harness: a controlled execution layer that lets AI seller agents represent a merchant safely across agentic commerce channels.
