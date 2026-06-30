@@ -50,7 +50,7 @@ export function normalizeUcpCart(cart: ShopwareUcpCart): CartSummary {
   };
 }
 
-export function readUcpContinueUrl(checkout: ShopwareUcpCart): string {
+export function readUcpContinueUrl(checkout: ShopwareUcpCart): string | undefined {
   const direct = checkout.continueUrl ?? checkout.continue_url;
   if (direct) {
     return direct;
@@ -61,7 +61,7 @@ export function readUcpContinueUrl(checkout: ShopwareUcpCart): string {
     return link.href;
   }
 
-  throw new Error('UCP checkout response did not include a continue URL');
+  return undefined;
 }
 
 function normalizeProductPrice(product: ShopwareUcpProduct): Money | undefined {
@@ -93,21 +93,52 @@ function normalizeCartMoney(cart: ShopwareUcpCart, currency: string) {
   const summary = cart.moneySummary ?? cart.money_summary;
 
   return {
-    subtotal: summary?.subtotal ?? normalizeRequiredMoney(0, currency),
-    total: summary?.total ?? normalizeRequiredMoney(0, currency),
+    subtotal:
+      summary?.subtotal ??
+      totalByType(cart.totals, 'subtotal', currency) ??
+      normalizeRequiredMoney(0, currency),
+    total:
+      summary?.total ??
+      totalByType(cart.totals, 'total', currency) ??
+      normalizeRequiredMoney(0, currency),
   };
 }
 
 function lineItemUnitPrice(item: ShopwareUcpLineItem, cartCurrency: string): Money {
-  return item.unitPrice ?? item.unit_price ?? normalizeRequiredMoney(0, cartCurrency);
+  const productPrice = normalizeProductPrice(item.item ?? { id: item.id ?? 'unknown-product' });
+
+  return (
+    item.unitPrice ?? item.unit_price ?? productPrice ?? normalizeRequiredMoney(0, cartCurrency)
+  );
 }
 
 function lineItemTotalPrice(item: ShopwareUcpLineItem, unitPrice: Money): Money {
   return (
     item.totalPrice ??
     item.total_price ??
+    totalByType(item.totals, 'total', unitPrice.currency) ??
+    totalByType(item.totals, 'subtotal', unitPrice.currency) ??
     normalizeRequiredMoney(unitPrice.amount * item.quantity, unitPrice.currency)
   );
+}
+
+function totalByType(
+  totals:
+    | readonly {
+        readonly type: string;
+        readonly amount: number;
+        readonly currency?: string | undefined;
+      }[]
+    | undefined,
+  type: string,
+  fallbackCurrency: string,
+): Money | undefined {
+  const total = totals?.find((candidate) => candidate.type === type);
+  if (!total) {
+    return undefined;
+  }
+
+  return normalizeRequiredMoney(total.amount, total.currency ?? fallbackCurrency);
 }
 
 function normalizeRequiredMoney(amount: number, currency: string): ShopwareUcpMoney {

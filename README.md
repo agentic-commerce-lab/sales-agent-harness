@@ -25,6 +25,10 @@ OPENAI_API_KEY=sk-...
 SHOPWARE_BASE_URL=https://your-shop.example
 SHOPWARE_STORE_API_ACCESS_KEY=store-api-access-key
 SHOPWARE_DEFAULT_SALES_CHANNEL_ID=sales-channel-id
+SHOPWARE_UCP_AGENT_PROFILE_URL=https://platform.example/.well-known/ucp
+SHOPWARE_UCP_SIGNING_KEY_ID=platform-2026
+SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK={"kty":"EC","crv":"P-256","kid":"platform-2026","x":"...","y":"...","d":"..."}
+SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL=false
 AGENT_RUNTIME_MODEL=gpt-5-mini
 HOST=127.0.0.1
 PORT=3000
@@ -36,6 +40,9 @@ Required values:
 - `SHOPWARE_BASE_URL`: Shopware storefront base URL, without a trailing slash.
 - `SHOPWARE_STORE_API_ACCESS_KEY`: Store API access key for the target sales channel.
 - `SHOPWARE_DEFAULT_SALES_CHANNEL_ID`: sales channel ID used for sessions and handoff records.
+- `SHOPWARE_UCP_AGENT_PROFILE_URL`: optional UCP platform profile URL used by the `ucp_shopware` adapter; defaults to `${SHOPWARE_BASE_URL}/.well-known/ucp`.
+- `SHOPWARE_UCP_SIGNING_KEY_ID` and `SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK`: optional ES256 signing key pair for strict UCP request signing. Configure both together.
+- `SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL`: set to `true` only for local HTTP Shopware dev-mode profile fetching. Production profile URLs must use HTTPS.
 
 Optional values:
 
@@ -59,6 +66,32 @@ COMMERCE_ADAPTER_PROVIDER=ucp_shopware
 ```
 
 With `ucp_shopware`, catalog/cart calls go through the plugin's UCP REST endpoints under `/ucp/v1`, and `prepareCheckoutHandoff` creates a UCP checkout session and returns the plugin-provided `continueUrl`. The harness still owns runtime orchestration, policy checks, tool exposure, response normalization, and audit logging.
+
+For strict UCP, set `SHOPWARE_UCP_AGENT_PROFILE_URL` to the public HTTPS URL where this harness serves `/.well-known/ucp`, and configure `SHOPWARE_UCP_SIGNING_KEY_ID` plus `SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK`. The harness signs UCP REST requests with RFC 9421 `Signature-Input`/`Signature` headers and RFC 9530 `Content-Digest`, and the profile endpoint publishes only the public JWK under `signing_keys`.
+
+Generate a local P-256 signing key with:
+
+```bash
+node -e "const {generateKeyPairSync}=require('crypto'); const {privateKey}=generateKeyPairSync('ec',{namedCurve:'P-256'}); const jwk=privateKey.export({format:'jwk'}); jwk.kid='platform-2026'; console.log(JSON.stringify(jwk));"
+```
+
+For local HTTP Shopware/UCP testing, the Shopware Agentic Commerce plugin must allow local profile fetching. In the Shopware container/environment, set:
+
+```bash
+SWAG_AGENTIC_COMMERCE_UCP_PROFILE_FETCHING_DEVELOPMENT_MODE=1
+```
+
+Without that Shopware setting, UCP calls fail with `Plain http is only allowed when profile fetching development mode is enabled.`
+
+The Shopware UCP sales-channel config must also allow this unsigned local harness flow:
+
+- `active: true`
+- `enabledCapabilities` includes `catalog`, `cart`, and `checkout`
+- `enabledTransports` includes `rest`; include `embedded` when using the embedded checkout fallback URL
+- `signaturePolicy: "strict"` for signed UCP testing, or `"log"` only for local unsigned smoke tests
+- `embeddedAllowedOrigins` and `embeddedFrameAncestors` include the storefront origin, for example `http://localhost`
+
+For production, keep strict signature enforcement, use an HTTPS profile URL without redirects, and keep the private JWK only in server-side environment or secret storage.
 
 ### 2. Start with Docker
 
@@ -450,6 +483,10 @@ export OPENAI_API_KEY=...
 export SHOPWARE_BASE_URL=https://your-shop.example
 export SHOPWARE_STORE_API_ACCESS_KEY=...
 export SHOPWARE_DEFAULT_SALES_CHANNEL_ID=...
+export SHOPWARE_UCP_AGENT_PROFILE_URL=https://platform.example/.well-known/ucp
+export SHOPWARE_UCP_SIGNING_KEY_ID=platform-2026
+export SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK='{"kty":"EC","crv":"P-256","x":"...","y":"...","d":"...","kid":"platform-2026"}'
+export SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL=false
 ```
 
 Optional environment:
@@ -458,6 +495,8 @@ Optional environment:
 - `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
 - `AGENT_RUNTIME_PROVIDER`, currently `deep_agents`
 - `COMMERCE_ADAPTER_PROVIDER`, `shopware` by default, or `ucp_shopware`
+- `SHOPWARE_UCP_SIGNING_KEY_ID` and `SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK`, required together for strict signed UCP requests
+- `SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL`, local-only escape hatch for HTTP profile URLs when Shopware plugin development mode is enabled
 - `HOST`, defaulting to `127.0.0.1`
 - `PORT`, defaulting to `3000`
 

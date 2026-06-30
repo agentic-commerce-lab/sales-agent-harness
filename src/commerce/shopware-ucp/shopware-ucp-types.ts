@@ -38,6 +38,7 @@ export interface ShopwareUcpLineItem {
   readonly unit_price?: ShopwareUcpMoney | undefined;
   readonly totalPrice?: ShopwareUcpMoney | undefined;
   readonly total_price?: ShopwareUcpMoney | undefined;
+  readonly totals?: readonly ShopwareUcpTotal[] | undefined;
 }
 
 export interface ShopwareUcpCart {
@@ -60,6 +61,13 @@ export interface ShopwareUcpCart {
   readonly continueUrl?: string | undefined;
   readonly continue_url?: string | undefined;
   readonly links?: readonly { readonly rel?: string; readonly href?: string }[] | undefined;
+  readonly totals?: readonly ShopwareUcpTotal[] | undefined;
+}
+
+export interface ShopwareUcpTotal {
+  readonly type: string;
+  readonly amount: number;
+  readonly currency?: string | undefined;
 }
 
 export interface ShopwareUcpClient {
@@ -78,4 +86,5 @@ export interface ShopwareUcpClient {
     readonly cartId?: string | undefined;
     readonly lineItems: readonly CartItemInput[];
   }): Promise<ShopwareUcpCart>;
+  getEmbeddedCheckoutUrl(checkoutId: string): string;
 }

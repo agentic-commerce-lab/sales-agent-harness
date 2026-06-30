@@ -12,6 +12,7 @@ export { ShopwareAdapter } from './commerce/shopware/shopware-adapter.js';
 export { FetchShopwareStoreApiClient } from './commerce/shopware/shopware-store-api-client.js';
 export { ShopwareUcpAdapter } from './commerce/shopware-ucp/shopware-ucp-adapter.js';
 export { FetchShopwareUcpClient } from './commerce/shopware-ucp/shopware-ucp-client.js';
+export { createUcpPlatformProfile } from './commerce/shopware-ucp/ucp-platform-profile.js';
 export { loadAgentHarnessConfig, parseAgentHarnessConfig } from './config/load-agent-config.js';
 export type * from './contracts/commerce.js';
 export type * from './contracts/config.js';

@@ -113,7 +113,8 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
 
       return {
         summary,
-        continueUrl: readUcpContinueUrl(checkout),
+        continueUrl:
+          readUcpContinueUrl(checkout) ?? this.#client.getEmbeddedCheckoutUrl(checkout.id),
       };
     } catch (error) {
       throw new Error('Shopware UCP checkout handoff failed', { cause: error });

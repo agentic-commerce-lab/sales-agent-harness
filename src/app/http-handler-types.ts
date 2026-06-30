@@ -21,4 +21,5 @@ export interface SalesAgentHttpHandler {
 
 export interface CreateSalesAgentHttpHandlerInput {
   readonly app: SalesAgentHttpApp;
+  readonly ucpPlatformProfile?: unknown;
 }

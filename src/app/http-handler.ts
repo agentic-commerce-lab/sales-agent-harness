@@ -32,25 +32,38 @@ export function createSalesAgentHttpHandler(
   input: CreateSalesAgentHttpHandlerInput,
 ): SalesAgentHttpHandler {
   return {
-    handle: async (request) => handleRequest(input.app, request),
+    handle: async (request) => handleRequest(input, request),
   };
 }
 
-async function handleRequest(app: SalesAgentHttpApp, request: Request): Promise<Response> {
+async function handleRequest(
+  input: CreateSalesAgentHttpHandlerInput,
+  request: Request,
+): Promise<Response> {
   try {
     const url = new URL(request.url);
 
     return request.method === 'GET'
-      ? handleGetRequest(url)
-      : await handlePostRequest(app, request, url);
+      ? handleGetRequest(input, url)
+      : await handlePostRequest(input.app, request, url);
   } catch (error) {
     return jsonResponse(toErrorResponse(error), isInputError(error) ? 400 : 500);
   }
 }
 
-function handleGetRequest(url: URL): Response {
+function handleGetRequest(input: CreateSalesAgentHttpHandlerInput, url: URL): Response {
   if (url.pathname === '/health') {
     return jsonResponse({ status: 'ok' });
+  }
+
+  if (url.pathname === '/.well-known/ucp' && input.ucpPlatformProfile) {
+    return new Response(JSON.stringify(input.ucpPlatformProfile), {
+      status: 200,
+      headers: {
+        'cache-control': 'public, max-age=300',
+        'content-type': 'application/json',
+      },
+    });
   }
 
   if (url.pathname === '/.well-known/agent-card.json') {

@@ -25,6 +25,7 @@ describe('loadApplicationEnvironmentConfig', () => {
         baseUrl: 'https://shop.example.test',
         storeApiAccessKey: 'store-api-key',
         defaultSalesChannelId: 'sales-channel-1',
+        ucpAllowInsecureProfileUrl: false,
       },
     });
   });
@@ -36,9 +37,33 @@ describe('loadApplicationEnvironmentConfig', () => {
       SHOPWARE_STORE_API_ACCESS_KEY: 'store-api-key',
       SHOPWARE_DEFAULT_SALES_CHANNEL_ID: 'sales-channel-1',
       COMMERCE_ADAPTER_PROVIDER: 'ucp_shopware',
+      SHOPWARE_UCP_AGENT_PROFILE_URL: 'https://platform.example/.well-known/ucp',
+      SHOPWARE_UCP_SIGNING_KEY_ID: 'platform-key',
+      SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK: '{"kty":"EC"}',
+      SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL: 'true',
     });
 
     expect(config.commerceAdapterProvider).toBe('ucp_shopware');
+    expect(config.shopware).toMatchObject({
+      ucpAgentProfileUrl: 'https://platform.example/.well-known/ucp',
+      ucpSigningKeyId: 'platform-key',
+      ucpSigningPrivateKeyJwk: '{"kty":"EC"}',
+      ucpAllowInsecureProfileUrl: true,
+    });
+  });
+});
+
+describe('loadApplicationEnvironmentConfig validation', () => {
+  test('requires both UCP signing key id and private key when either is configured', () => {
+    expect(() =>
+      loadApplicationEnvironmentConfig({
+        OPENAI_API_KEY: 'test-key',
+        SHOPWARE_BASE_URL: 'https://shop.example.test',
+        SHOPWARE_STORE_API_ACCESS_KEY: 'store-api-key',
+        SHOPWARE_DEFAULT_SALES_CHANNEL_ID: 'sales-channel-1',
+        SHOPWARE_UCP_SIGNING_KEY_ID: 'platform-key',
+      }),
+    ).toThrow('Missing required environment variable SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK');
   });
 
   test('rejects unsupported runtime or commerce providers', () => {

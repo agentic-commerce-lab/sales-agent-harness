@@ -2,12 +2,20 @@ export interface ShopwareEnvironmentConfig {
   readonly baseUrl: string;
   readonly storeApiAccessKey: string;
   readonly defaultSalesChannelId: string;
+  readonly ucpAgentProfileUrl?: string | undefined;
+  readonly ucpSigningKeyId?: string | undefined;
+  readonly ucpSigningPrivateKeyJwk?: string | undefined;
+  readonly ucpAllowInsecureProfileUrl?: boolean | undefined;
 }
 
 export interface ShopwareEnvironmentInput {
   readonly SHOPWARE_BASE_URL?: string | undefined;
   readonly SHOPWARE_STORE_API_ACCESS_KEY?: string | undefined;
   readonly SHOPWARE_DEFAULT_SALES_CHANNEL_ID?: string | undefined;
+  readonly SHOPWARE_UCP_AGENT_PROFILE_URL?: string | undefined;
+  readonly SHOPWARE_UCP_SIGNING_KEY_ID?: string | undefined;
+  readonly SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK?: string | undefined;
+  readonly SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL?: string | undefined;
 }
 
 export function loadShopwareEnvironmentConfig(
@@ -15,6 +23,10 @@ export function loadShopwareEnvironmentConfig(
     SHOPWARE_BASE_URL: process.env.SHOPWARE_BASE_URL,
     SHOPWARE_STORE_API_ACCESS_KEY: process.env.SHOPWARE_STORE_API_ACCESS_KEY,
     SHOPWARE_DEFAULT_SALES_CHANNEL_ID: process.env.SHOPWARE_DEFAULT_SALES_CHANNEL_ID,
+    SHOPWARE_UCP_AGENT_PROFILE_URL: process.env.SHOPWARE_UCP_AGENT_PROFILE_URL,
+    SHOPWARE_UCP_SIGNING_KEY_ID: process.env.SHOPWARE_UCP_SIGNING_KEY_ID,
+    SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK: process.env.SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK,
+    SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL: process.env.SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL,
   },
 ): ShopwareEnvironmentConfig {
   const baseUrl = readRequiredEnv(env.SHOPWARE_BASE_URL, 'SHOPWARE_BASE_URL');
@@ -31,6 +43,33 @@ export function loadShopwareEnvironmentConfig(
     baseUrl,
     storeApiAccessKey,
     defaultSalesChannelId,
+    ucpAllowInsecureProfileUrl: env.SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL === 'true',
+    ...(env.SHOPWARE_UCP_AGENT_PROFILE_URL
+      ? { ucpAgentProfileUrl: env.SHOPWARE_UCP_AGENT_PROFILE_URL }
+      : {}),
+    ...readUcpSigningConfig(env),
+  };
+}
+
+function readUcpSigningConfig(env: ShopwareEnvironmentInput):
+  | {
+      readonly ucpSigningKeyId: string;
+      readonly ucpSigningPrivateKeyJwk: string;
+    }
+  | Record<string, never> {
+  if (!env.SHOPWARE_UCP_SIGNING_KEY_ID && !env.SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK) {
+    return {};
+  }
+
+  return {
+    ucpSigningKeyId: readRequiredEnv(
+      env.SHOPWARE_UCP_SIGNING_KEY_ID,
+      'SHOPWARE_UCP_SIGNING_KEY_ID',
+    ),
+    ucpSigningPrivateKeyJwk: readRequiredEnv(
+      env.SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK,
+      'SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK',
+    ),
   };
 }
 

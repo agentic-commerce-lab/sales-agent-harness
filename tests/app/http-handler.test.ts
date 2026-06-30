@@ -166,6 +166,27 @@ test('createSalesAgentHttpHandler serves the example customer UI', async () => {
   expect(html).not.toContain('Shopware context token');
 });
 
+test('createSalesAgentHttpHandler serves a cacheable UCP platform profile when configured', async () => {
+  const handler = createSalesAgentHttpHandler({
+    app: createCommerceRoutingApp(),
+    ucpPlatformProfile: {
+      ucp: { version: '2026-04-08' },
+      signing_keys: [{ kid: 'platform-key', kty: 'EC', crv: 'P-256', x: 'x', y: 'y' }],
+    },
+  });
+
+  const response = await handler.handle(
+    new Request('https://harness.example.test/.well-known/ucp'),
+  );
+
+  expect(response.headers.get('content-type')).toBe('application/json');
+  expect(response.headers.get('cache-control')).toBe('public, max-age=300');
+  expect(await response.json()).toEqual({
+    ucp: { version: '2026-04-08' },
+    signing_keys: [{ kid: 'platform-key', kty: 'EC', crv: 'P-256', x: 'x', y: 'y' }],
+  });
+});
+
 function createSessionChatApp(calls: unknown[]): SalesAgentHttpApp {
   return {
     createSession: (input): PublicAgentSession => {

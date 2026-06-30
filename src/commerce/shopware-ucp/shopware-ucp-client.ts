@@ -12,19 +12,29 @@ import type {
   ShopwareUcpProduct,
   ShopwareUcpProductSearchResponse,
 } from './shopware-ucp-types.js';
+import { escapeSfString, UcpHttpSigner } from './ucp-http-signature.js';
 
 export type * from './shopware-ucp-types.js';
 
 export class FetchShopwareUcpClient implements ShopwareUcpClient {
   readonly #baseUrl: string;
   readonly #fetch: typeof fetch;
+  readonly #agentProfileUrl: string;
+  readonly #signer: UcpHttpSigner | undefined;
 
   constructor(config: ShopwareEnvironmentConfig, fetchImplementation: typeof fetch = fetch) {
     this.#baseUrl = config.baseUrl.replace(/\/$/, '');
     this.#fetch = fetchImplementation;
+    this.#agentProfileUrl = config.ucpAgentProfileUrl ?? `${this.#baseUrl}/.well-known/ucp`;
+    this.#signer =
+      config.ucpSigningKeyId && config.ucpSigningPrivateKeyJwk
+        ? new UcpHttpSigner({
+            keyId: config.ucpSigningKeyId,
+            privateKeyJwk: config.ucpSigningPrivateKeyJwk,
+          })
+        : undefined;
   }
 
-  // fallow-ignore-next-line unused-class-member
   async searchProducts(input: {
     readonly query: string;
     readonly limit?: number;
@@ -92,14 +102,41 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     return parseCart(payload);
   }
 
+  // fallow-ignore-next-line unused-class-member
+  getEmbeddedCheckoutUrl(checkoutId: string): string {
+    return `${this.#baseUrl}/ucp/embedded/checkout/${encodeURIComponent(checkoutId)}`;
+  }
+
   async #requestJson(method: string, path: string, body?: unknown): Promise<unknown> {
-    const response = await this.#fetch(`${this.#baseUrl}${path}`, {
+    const url = new URL(`${this.#baseUrl}${path}`);
+    const bodyString = body === undefined ? undefined : JSON.stringify(body);
+    const headers = new Map<string, string>([
+      ['accept', 'application/json'],
+      ['idempotency-key', createIdempotencyKey()],
+      ['ucp-agent', `profile="${escapeSfString(this.#agentProfileUrl)}"`],
+      ...(bodyString === undefined ? [] : ([['content-type', 'application/json']] as const)),
+    ]);
+    const signatureHeaders = this.#signer?.sign({
       method,
-      headers: {
-        accept: 'application/json',
-        ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
-      },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      url,
+      headers,
+      body: bodyString,
+    });
+    const response = await this.#fetch(url, {
+      method,
+      headers: Object.fromEntries([
+        ...headers.entries(),
+        ...(signatureHeaders?.contentDigest
+          ? [['content-digest', signatureHeaders.contentDigest] as const]
+          : []),
+        ...(signatureHeaders
+          ? [
+              ['signature-input', signatureHeaders.signatureInput] as const,
+              ['signature', signatureHeaders.signature] as const,
+            ]
+          : []),
+      ]),
+      ...(bodyString !== undefined ? { body: bodyString } : {}),
     });
 
     if (!response.ok) {
@@ -108,6 +145,10 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
 
     return response.json();
   }
+}
+
+function createIdempotencyKey(): string {
+  return `sales-agent-harness-${globalThis.crypto.randomUUID()}`;
 }
 
 function toUcpLineItemPayload(item: CartItemInput) {
@@ -161,6 +202,7 @@ function parseCart(payload: unknown): ShopwareUcpCart {
     continueUrl: readOptionalString(record.continueUrl),
     continue_url: readOptionalString(record.continue_url),
     links: parseLinks(record.links),
+    totals: parseTotals(record.totals),
   };
 }
 
@@ -180,6 +222,7 @@ function parseLineItems(payload: unknown) {
       unit_price: parseMoney(record.unit_price),
       totalPrice: parseMoney(record.totalPrice),
       total_price: parseMoney(record.total_price),
+      totals: parseTotals(record.totals),
     };
   });
 }
@@ -255,6 +298,33 @@ function parseLinks(payload: unknown) {
       {
         ...(rel ? { rel } : {}),
         ...(href ? { href } : {}),
+      },
+    ];
+  });
+}
+
+function parseTotals(payload: unknown) {
+  if (!Array.isArray(payload)) {
+    return undefined;
+  }
+
+  return payload.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return [];
+    }
+
+    const record = readRecord(item);
+    const type = readOptionalString(record.type);
+    if (!type || typeof record.amount !== 'number') {
+      return [];
+    }
+
+    const currency = readOptionalString(record.currency);
+    return [
+      {
+        type,
+        amount: record.amount,
+        ...(currency ? { currency } : {}),
       },
     ];
   });
