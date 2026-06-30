@@ -185,6 +185,116 @@ Fast manual smoke test:
 5. Use `POST /commerce/customer` to test deterministic commerce calls without model tool selection.
 6. Use `POST /message:send` to test the A2A-compatible HTTP+JSON entrypoint.
 
+## Testing With A Real AI Agent
+
+Use this flow when you want to test the full path through LangGraph Deep Agents, OpenAI, harness tools, policy checks, and the Shopware Store API.
+
+### 1. Prepare real credentials
+
+Your `.env` must contain real values:
+
+```bash
+OPENAI_API_KEY=sk-...
+AGENT_RUNTIME_MODEL=gpt-5-mini
+SHOPWARE_BASE_URL=https://your-shop.example
+SHOPWARE_STORE_API_ACCESS_KEY=store-api-access-key
+SHOPWARE_DEFAULT_SALES_CHANNEL_ID=sales-channel-id
+```
+
+The Shopware sales channel should have visible products. Use a real storefront/customer context token when you create a session; the harness stores it server-side and forwards it to Shopware as `sw-context-token`.
+
+### 2. Start the harness
+
+Docker:
+
+```bash
+docker compose up --build
+```
+
+Bun:
+
+```bash
+set -a
+source .env
+set +a
+bun run start
+```
+
+### 3. Create an agent session
+
+```bash
+curl -s -X POST http://127.0.0.1:3000/sessions \
+  -H 'content-type: application/json' \
+  -d '{
+    "channel": "customer_ui",
+    "shopwareContextToken": "real-shopware-context-token",
+    "customerContext": { "region": "DE" }
+  }'
+```
+
+Copy the returned `agentSessionId`.
+
+### 4. Ask a question that should require a tool call
+
+```bash
+curl -s -X POST http://127.0.0.1:3000/chat \
+  -H 'content-type: application/json' \
+  -d '{
+    "agentSessionId": "session-id-from-create-session",
+    "message": "Find three waterproof jackets and tell me which one is cheapest."
+  }'
+```
+
+A successful real-agent response should include:
+
+- `message`: the generated seller-agent response.
+- `toolCalls`: tool names the Deep Agent selected, such as `searchProducts` or `getProductDetails`.
+- Product, price, and availability details only if Shopware returned them through the harness.
+
+If `toolCalls` is empty, ask a more commerce-specific question, or check that the capability is enabled in `config/agents/demo-sales-agent.json`.
+
+### 5. Test cart preparation
+
+Use a real product ID from the product search response:
+
+```bash
+curl -s -X POST http://127.0.0.1:3000/chat \
+  -H 'content-type: application/json' \
+  -d '{
+    "agentSessionId": "session-id-from-create-session",
+    "message": "Prepare a cart with 1 unit of product PRODUCT_ID and summarize the total. Do not place an order."
+  }'
+```
+
+The agent may call `createCart`, `getCartSummary`, or `prepareCheckoutHandoff`, depending on the phrasing and enabled capabilities. The harness still blocks order placement, payment execution, legal-term acceptance, binding quotes, and custom discounts.
+
+### 6. Test through A2A
+
+```bash
+curl -s -X POST http://127.0.0.1:3000/message:send \
+  -H 'content-type: application/a2a+json' \
+  -H 'A2A-Version: 1.0' \
+  -d '{
+    "message": {
+      "messageId": "real-agent-msg-1",
+      "role": "ROLE_USER",
+      "parts": [{ "text": "Find waterproof jackets and recommend one under 100 EUR." }],
+      "metadata": { "agentSessionId": "session-id-from-create-session" }
+    }
+  }'
+```
+
+The A2A response wraps the same real-agent output in a completed task. Commerce still flows through harness tools, not directly from the model to Shopware.
+
+### Real-Agent Troubleshooting
+
+- OpenAI authentication errors: verify `OPENAI_API_KEY` and `AGENT_RUNTIME_MODEL`.
+- No tool calls: ask for a concrete commerce action, such as product search or cart preparation.
+- Shopware `401` or `403`: verify the Store API access key and sales-channel mapping.
+- Empty results: confirm products are visible in the configured Shopware sales channel.
+- Policy block: check blocked products/categories, `maxItemQuantity`, `maxCartValue`, region, and enabled capabilities in the agent config file.
+- Checkout handoff returns a URL but storefront checkout does not complete: the harness creates the opaque token; the Shopware app handoff page is still future integration work.
+
 ## A2A Connection
 
 The service exposes an A2A-compatible HTTP+JSON surface for buyer-agent experiments:
