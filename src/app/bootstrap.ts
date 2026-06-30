@@ -18,13 +18,14 @@ export interface CreateRunnableSalesAgentHarnessAppInput {
 export function createRunnableSalesAgentHarnessApp(
   input: CreateRunnableSalesAgentHarnessAppInput,
 ): SalesAgentHarnessApp {
+  const agentConfig = withRuntimeShopwareConfig(input.agentConfig, input.environment);
   const adapter = new ShopwareAdapter({
     client: new FetchShopwareStoreApiClient(input.environment.shopware, input.fetchImplementation),
-    confidentialFields: input.agentConfig.policies.confidentialFields,
+    confidentialFields: agentConfig.policies.confidentialFields,
   });
 
   return createSalesAgentHarnessApp({
-    config: input.agentConfig,
+    config: agentConfig,
     adapter,
     runtimeFactory: ({ tools }) =>
       createLangGraphDeepAgentRuntime({
@@ -47,5 +48,19 @@ export async function createConfiguredSalesAgentHarnessApp(
   return {
     app: createRunnableSalesAgentHarnessApp({ agentConfig, environment }),
     environment,
+  };
+}
+
+function withRuntimeShopwareConfig(
+  agentConfig: AgentHarnessConfig,
+  environment: ApplicationEnvironmentConfig,
+): AgentHarnessConfig {
+  return {
+    ...agentConfig,
+    shopware: {
+      ...agentConfig.shopware,
+      salesChannelId: environment.shopware.defaultSalesChannelId,
+      storefrontBaseUrl: environment.shopware.baseUrl,
+    },
   };
 }
