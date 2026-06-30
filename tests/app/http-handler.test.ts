@@ -12,7 +12,6 @@ test('createSalesAgentHttpHandler creates sessions, handles chat, and returns JS
     jsonRequest('/sessions', {
       channel: 'customer_ui',
       customerContext: { region: 'DE' },
-      shopwareContextToken: 'secret-shopware-context',
     }),
   );
   const chatResponse = await handler.handle(
@@ -32,7 +31,10 @@ test('createSalesAgentHttpHandler creates sessions, handles chat, and returns JS
     createdAt: '2026-06-30T10:00:00.000Z',
   });
   expect(await chatResponse.json()).toEqual({ message: 'Hello', toolCalls: [] });
-  expect(JSON.stringify(calls)).toContain('secret-shopware-context');
+  expect(calls).toContainEqual({
+    route: 'session',
+    input: { channel: 'customer_ui', customerContext: { region: 'DE' } },
+  });
 });
 
 test('createSalesAgentHttpHandler routes commerce and handoff validation requests', async () => {
@@ -161,6 +163,7 @@ test('createSalesAgentHttpHandler serves the example customer UI', async () => {
   expect(html).toContain('Sales Agent Harness Demo');
   expect(html).toContain('/sessions');
   expect(html).toContain('/chat');
+  expect(html).not.toContain('Shopware context token');
 });
 
 function createSessionChatApp(calls: unknown[]): SalesAgentHttpApp {

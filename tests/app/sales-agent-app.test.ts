@@ -6,6 +6,7 @@ import type { AgentRuntime } from '../../src/runtime/agent-runtime.js';
 
 test('createSalesAgentHarnessApp creates public sessions without exposing Shopware context tokens', () => {
   const createdRuntimeTools: string[][] = [];
+  const ids = ['session-1', 'generated-shopware-context'];
   const app = createSalesAgentHarnessApp({
     config: createConfig(),
     adapter: createAdapter(),
@@ -13,14 +14,13 @@ test('createSalesAgentHarnessApp creates public sessions without exposing Shopwa
       createdRuntimeTools.push(toToolNames(tools));
       return createRuntime();
     },
-    createId: () => 'session-1',
+    createId: () => ids.shift() ?? 'unexpected-id',
     now: () => new Date('2026-06-30T10:00:00.000Z'),
   });
 
   const session = app.createSession({
     channel: 'customer_ui',
     customerContext: { region: 'DE' },
-    shopwareContextToken: 'secret-shopware-context',
   });
 
   expect(session).toEqual({
@@ -32,11 +32,35 @@ test('createSalesAgentHarnessApp creates public sessions without exposing Shopwa
     createdAt: new Date('2026-06-30T10:00:00.000Z'),
     expiresAt: new Date('2026-06-30T10:30:00.000Z'),
   });
-  expect(JSON.stringify(session)).not.toContain('secret-shopware-context');
+  expect(app.sessionStore.getSession('session-1', 'merchant-1')?.commerceContext).toEqual({
+    shopwareSalesChannelId: 'sales-channel-1',
+    shopwareContextToken: 'generated-shopware-context',
+  });
+  expect(JSON.stringify(session)).not.toContain('generated-shopware-context');
   expect(createdRuntimeTools).toEqual([
     ['searchProducts', 'getProductDetails', 'createCart', 'prepareCheckoutHandoff'],
   ]);
   expect(app.auditLogger.events.map((event) => event.type)).toContain('session_created');
+});
+
+test('createSalesAgentHarnessApp accepts an existing server-side Shopware context token', () => {
+  const app = createSalesAgentHarnessApp({
+    config: createConfig(),
+    adapter: createAdapter(),
+    runtimeFactory: () => createRuntime(),
+    createId: () => 'session-1',
+    now: () => new Date('2026-06-30T10:00:00.000Z'),
+  });
+
+  app.createSession({
+    channel: 'customer_ui',
+    shopwareContextToken: 'secret-shopware-context',
+  });
+
+  expect(app.sessionStore.getSession('session-1', 'merchant-1')?.commerceContext).toEqual({
+    shopwareSalesChannelId: 'sales-channel-1',
+    shopwareContextToken: 'secret-shopware-context',
+  });
 });
 
 test('createSalesAgentHarnessApp routes chat through the configured agent runtime and audits the exchange', async () => {

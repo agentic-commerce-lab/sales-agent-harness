@@ -19,7 +19,9 @@ function createSessionInput() {
 
 describe('InMemorySessionStore', () => {
   test('stores Shopware context tokens server-side only', () => {
-    const store = new InMemorySessionStore();
+    const store = new InMemorySessionStore({
+      now: () => new Date('2026-06-30T12:30:00.000Z'),
+    });
 
     store.createSession(createSessionInput());
     store.setCommerceContext('session-1', {

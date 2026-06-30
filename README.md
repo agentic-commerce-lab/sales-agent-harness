@@ -124,15 +124,15 @@ The example UI lets you create a harness session through `/sessions` and send a 
 
 ### 6. Create a session
 
-Use a server-side Shopware context token from the merchant storefront or app context:
+For the public customer/demo flow, do not provide a Shopware context token. The harness creates and stores the server-side commerce context for the session:
 
 ```bash
 curl -X POST http://127.0.0.1:3000/sessions \
   -H 'content-type: application/json' \
-  -d '{"channel":"customer_ui","shopwareContextToken":"server-side-context-token","customerContext":{"region":"DE"}}'
+  -d '{"channel":"customer_ui","customerContext":{"region":"DE"}}'
 ```
 
-Copy the returned `agentSessionId`. The raw Shopware context token is stored server-side and is not returned.
+Copy the returned `agentSessionId`. If a trusted merchant storefront or Shopware app already has a server-side context token, it may pass `shopwareContextToken` during session creation. The raw token is stored server-side and is never returned.
 
 ### 7. Send a chat message
 
@@ -201,7 +201,7 @@ SHOPWARE_STORE_API_ACCESS_KEY=store-api-access-key
 SHOPWARE_DEFAULT_SALES_CHANNEL_ID=sales-channel-id
 ```
 
-The Shopware sales channel should have visible products. Use a real storefront/customer context token when you create a session; the harness stores it server-side and forwards it to Shopware as `sw-context-token`.
+The Shopware sales channel should have visible products. For customer-facing tests, create a session without a `shopwareContextToken`; the harness creates one server-side. For storefront/app integrations that already have a trusted server-side context token, pass it during session creation and the harness forwards it to Shopware as `sw-context-token`.
 
 ### 2. Start the harness
 
@@ -227,7 +227,6 @@ curl -s -X POST http://127.0.0.1:3000/sessions \
   -H 'content-type: application/json' \
   -d '{
     "channel": "customer_ui",
-    "shopwareContextToken": "real-shopware-context-token",
     "customerContext": { "region": "DE" }
   }'
 ```
@@ -456,12 +455,12 @@ Start the service:
 bun run start
 ```
 
-Create a session with a server-side Shopware context token from the merchant storefront/app context:
+Create a session. The customer-facing path does not require a Shopware context token:
 
 ```bash
 curl -X POST http://127.0.0.1:3000/sessions \
   -H 'content-type: application/json' \
-  -d '{"channel":"customer_ui","shopwareContextToken":"server-side-context-token","customerContext":{"region":"DE"}}'
+  -d '{"channel":"customer_ui","customerContext":{"region":"DE"}}'
 ```
 
 Then send a chat message:
@@ -482,7 +481,7 @@ The HTTP surface also exposes:
 - `POST /commerce/a2a`
 - `POST /handoff/validate`
 
-The Shopware context token is accepted only at session creation, stored server-side, sent to Store API as `sw-context-token`, and never returned in session, chat, handoff, or commerce responses.
+The optional Shopware context token is accepted only at session creation from trusted merchant server/app integrations, stored server-side, sent to Store API as `sw-context-token`, and never returned in session, chat, handoff, or commerce responses. Customer-facing UIs should not ask the buyer for this token.
 
 ## Checkout Handoff
 

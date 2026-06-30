@@ -13,7 +13,7 @@ import type { InMemorySessionStore } from '../session/session-store.js';
 export interface CreateAgentSessionInput {
   readonly channel: AgentChannel;
   readonly customerContext?: CustomerContext;
-  readonly shopwareContextToken: string;
+  readonly shopwareContextToken?: string;
   readonly ttlMs?: number;
 }
 

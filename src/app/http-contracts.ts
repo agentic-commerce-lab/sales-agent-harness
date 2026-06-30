@@ -14,7 +14,7 @@ const sessionSchema = z.object({
       region: z.string().optional(),
     })
     .optional(),
-  shopwareContextToken: z.string().min(1),
+  shopwareContextToken: z.string().min(1).optional(),
   ttlMs: z.number().int().positive().optional(),
 });
 
@@ -71,7 +71,6 @@ export function parseSession(input: unknown): CreateAgentSessionInput {
   const parsed = sessionSchema.parse(input);
   const sessionInput: CreateAgentSessionInput = {
     channel: parsed.channel,
-    shopwareContextToken: parsed.shopwareContextToken,
   };
 
   return {
@@ -79,6 +78,7 @@ export function parseSession(input: unknown): CreateAgentSessionInput {
     ...(parsed.customerContext
       ? { customerContext: parseCustomerContext(parsed.customerContext) }
       : {}),
+    ...(parsed.shopwareContextToken ? { shopwareContextToken: parsed.shopwareContextToken } : {}),
     ...(parsed.ttlMs ? { ttlMs: parsed.ttlMs } : {}),
   };
 }

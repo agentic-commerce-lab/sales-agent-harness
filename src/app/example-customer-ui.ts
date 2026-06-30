@@ -91,10 +91,6 @@ export const exampleCustomerUiHtml = `<!doctype html>
       <section>
         <h2>Session</h2>
         <label>
-          Shopware context token
-          <input id="context-token" placeholder="server-side-context-token" />
-        </label>
-        <label>
           Region
           <input id="region" value="DE" />
         </label>
@@ -122,7 +118,6 @@ export const exampleCustomerUiHtml = `<!doctype html>
 
     <script type="module">
       const output = document.querySelector('#output');
-      const contextToken = document.querySelector('#context-token');
       const region = document.querySelector('#region');
       const sessionId = document.querySelector('#session-id');
       const message = document.querySelector('#message');
@@ -141,7 +136,6 @@ export const exampleCustomerUiHtml = `<!doctype html>
       document.querySelector('#create-session').addEventListener('click', async () => {
         const session = await postJson('/sessions', {
           channel: 'customer_ui',
-          shopwareContextToken: contextToken.value,
           customerContext: { region: region.value },
         });
         if (session.agentSessionId) {

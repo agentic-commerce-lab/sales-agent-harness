@@ -22,7 +22,7 @@ export function createSession(
     customerContext: sessionInput.customerContext ?? {},
     commerceContext: {
       shopwareSalesChannelId: input.config.shopware.salesChannelId,
-      shopwareContextToken: sessionInput.shopwareContextToken,
+      shopwareContextToken: sessionInput.shopwareContextToken ?? context.createId(),
     },
     createdAt,
     expiresAt: new Date(createdAt.getTime() + (sessionInput.ttlMs ?? DEFAULT_SESSION_TTL_MS)),
@@ -39,10 +39,6 @@ function validateSessionInput(
 ): void {
   if (!input.config.policies.allowedChannels.includes(sessionInput.channel)) {
     throw new Error(`Channel ${sessionInput.channel} is not enabled for this agent`);
-  }
-
-  if (!sessionInput.shopwareContextToken) {
-    throw new Error('Missing required Shopware context token for agent session');
   }
 }
 
