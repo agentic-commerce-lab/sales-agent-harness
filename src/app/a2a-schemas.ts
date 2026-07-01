@@ -13,7 +13,7 @@ const a2aMessageSchema = z.object({
   messageId: z.string().min(1),
   contextId: z.string().min(1).optional(),
   taskId: z.string().min(1).optional(),
-  role: z.literal('ROLE_USER'),
+  role: z.enum(['user', 'ROLE_USER']),
   parts: z.array(a2aPartSchema).min(1),
   metadata: metadataSchema,
 });

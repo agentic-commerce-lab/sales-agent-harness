@@ -19,7 +19,13 @@ export interface SalesAgentHttpHandler {
   handle(request: Request): Promise<Response>;
 }
 
+export interface CheckoutResumeConfig {
+  readonly shopwareBaseUrl: string;
+  readonly shopwareAccessKey: string;
+}
+
 export interface CreateSalesAgentHttpHandlerInput {
   readonly app: SalesAgentHttpApp;
   readonly ucpPlatformProfile?: unknown;
+  readonly checkoutResume?: CheckoutResumeConfig;
 }

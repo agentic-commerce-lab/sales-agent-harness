@@ -1,6 +1,9 @@
+import { z } from 'zod';
+
 import { createA2aAgentCard } from './a2a-agent-card.js';
 import { a2aProtocolVersion } from './a2a-constants.js';
 import { handleA2aSendMessage } from './a2a-message.js';
+import { checkoutResumeHtml } from './checkout-resume-page.js';
 import { exampleCustomerUiHtml } from './example-customer-ui.js';
 import {
   chatSchema,
@@ -28,6 +31,15 @@ export type {
   SalesAgentHttpHandler,
 } from './http-handler-types.js';
 
+function log(message: string): void {
+  process.stdout.write(`${message}\n`);
+}
+
+function logError(message: string, error: unknown): void {
+  const detail = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  process.stderr.write(`${message}: ${detail}\n`);
+}
+
 export function createSalesAgentHttpHandler(
   input: CreateSalesAgentHttpHandlerInput,
 ): SalesAgentHttpHandler {
@@ -40,13 +52,23 @@ async function handleRequest(
   input: CreateSalesAgentHttpHandlerInput,
   request: Request,
 ): Promise<Response> {
-  try {
-    const url = new URL(request.url);
+  const start = Date.now();
+  const url = new URL(request.url);
 
-    return request.method === 'GET'
-      ? handleGetRequest(input, url)
-      : await handlePostRequest(input.app, request, url);
+  if (request.method !== 'GET') {
+    const body = await request.clone().text();
+    log(`→ ${request.method} ${url.pathname} ${body}`);
+  }
+
+  try {
+    const response =
+      request.method === 'GET'
+        ? handleGetRequest(input, url)
+        : await handlePostRequest(input.app, request, url);
+    log(`← ${response.status} (${Date.now() - start}ms)`);
+    return response;
   } catch (error) {
+    logError(`← 500 unhandled error (${Date.now() - start}ms)`, error);
     return jsonResponse(toErrorResponse(error), isInputError(error) ? 400 : 500);
   }
 }
@@ -74,6 +96,14 @@ function handleGetRequest(input: CreateSalesAgentHttpHandlerInput, url: URL): Re
     return htmlResponse(exampleCustomerUiHtml);
   }
 
+  if (url.pathname === '/checkout-resume' && input.checkoutResume) {
+    const token = url.searchParams.get('token');
+    if (!token) {
+      return jsonResponse({ error: 'Missing token parameter' }, 400);
+    }
+    return htmlResponse(checkoutResumeHtml(token, input.checkoutResume));
+  }
+
   return jsonResponse({ error: 'Not found' }, 404);
 }
 
@@ -87,6 +117,8 @@ async function handlePostRequest(
   }
 
   switch (url.pathname) {
+    case '/':
+      return handleJsonRpcRequest(app, await readJson(request));
     case '/sessions':
       return jsonResponse(app.createSession(parseSession(await readJson(request))), 201);
     case '/chat':
@@ -109,6 +141,50 @@ async function handlePostRequest(
     default:
       return jsonResponse({ error: 'Not found' }, 404);
   }
+}
+
+async function handleJsonRpcRequest(app: SalesAgentHttpApp, body: unknown): Promise<Response> {
+  const rpc = parseJsonRpcBody(body);
+
+  try {
+    switch (rpc.method) {
+      case 'message/send': {
+        const result = await handleA2aSendMessage(app, rpc.params);
+        return jsonResponse({ jsonrpc: '2.0', id: rpc.id, result });
+      }
+      default:
+        return jsonResponse(
+          {
+            jsonrpc: '2.0',
+            id: rpc.id,
+            error: { code: -32601, message: `Method not found: ${rpc.method}` },
+          },
+          404,
+        );
+    }
+  } catch (error) {
+    logError('JSONRPC error', error);
+    const message = error instanceof Error ? error.message : 'Internal error';
+    const code = isInputError(error) ? -32602 : -32603;
+    return jsonResponse(
+      { jsonrpc: '2.0', id: rpc.id, error: { code, message } },
+      isInputError(error) ? 400 : 500,
+    );
+  }
+}
+
+const jsonRpcBodySchema = z.object({
+  id: z.unknown(),
+  method: z.string(),
+  params: z.unknown().optional(),
+});
+
+function parseJsonRpcBody(body: unknown): { id: unknown; method: string; params: unknown } {
+  const result = jsonRpcBodySchema.safeParse(body);
+  if (!result.success) {
+    throw new HttpInputError('Invalid JSON-RPC request');
+  }
+  return { id: result.data.id, method: result.data.method, params: result.data.params };
 }
 
 async function readJson(request: Request): Promise<unknown> {

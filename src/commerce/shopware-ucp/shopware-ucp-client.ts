@@ -77,6 +77,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     readonly items: readonly CartItemInput[];
   }): Promise<ShopwareUcpCart> {
     const payload = await this.#requestJson('PATCH', `/ucp/v1/carts/${input.cartId}`, {
+      id: input.cartId,
       line_items: input.items.map(toUcpLineItemPayload),
     });
 

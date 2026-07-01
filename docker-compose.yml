@@ -8,6 +8,8 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
       AGENT_CONFIG_PATH: /app/config/agents/demo-sales-agent.json
+    extra_hosts:
+      - 'localhost:host-gateway'
     ports:
       - '3000:3000'
     volumes:

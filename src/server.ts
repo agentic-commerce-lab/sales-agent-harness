@@ -17,6 +17,14 @@ const handler = createSalesAgentHttpHandler({
         }),
       }
     : {}),
+  ...(environment.shopware.storeApiAccessKey
+    ? {
+        checkoutResume: {
+          shopwareBaseUrl: environment.shopware.baseUrl,
+          shopwareAccessKey: environment.shopware.storeApiAccessKey,
+        },
+      }
+    : {}),
 });
 
 Bun.serve({
