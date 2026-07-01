@@ -88,8 +88,10 @@ export interface ShopwareUcpClient {
     readonly cartId?: string | undefined;
     readonly lineItems: readonly CartItemInput[];
   }): Promise<ShopwareUcpCart>;
+  getCheckout(input: { readonly checkoutId: string }): Promise<ShopwareUcpCart>;
   updateCheckout(input: {
     readonly checkoutId: string;
+    readonly lineItems: readonly CartItemInput[];
     readonly buyer: BuyerInput;
     readonly fulfillment: FulfillmentInput;
   }): Promise<ShopwareUcpCart>;

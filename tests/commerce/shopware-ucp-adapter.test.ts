@@ -24,14 +24,17 @@ describe('FetchShopwareUcpClient', () => {
       lineItems: [{ productId: 'product-1', quantity: 2 }],
       cartId: 'cart-1',
     });
+    await client.getCheckout({ checkoutId: 'checkout-1' });
     await client.updateCheckout({
       checkoutId: 'checkout-1',
+      lineItems: [{ productId: 'product-1', quantity: 2 }],
       buyer: createBuyer(),
       fulfillment: createFulfillment(),
     });
     await client.completeCheckout({ checkoutId: 'checkout-1' });
 
     assertCreateCheckoutRequest(requests);
+    assertGetCheckoutRequest(requests);
     assertUpdateCheckoutRequest(requests);
     assertCompleteCheckoutRequest(requests);
   });
@@ -209,6 +212,7 @@ describe('ShopwareUcpAdapter total normalization', () => {
         createCart: async () => createTotalsCart(),
         updateCart: async () => createTotalsCart(),
         getCart: async () => createTotalsCart(),
+        getCheckout: async () => createTotalsCart(),
         createCheckout: async () => ({
           ...createTotalsCart(),
           id: 'checkout-1',
@@ -344,6 +348,7 @@ function createAdapterClient(): ShopwareUcpClient {
     createCart: async () => createUcpCart(),
     updateCart: async () => createUcpCart(),
     getCart: async () => createUcpCart(),
+    getCheckout: async () => ({ ...createUcpCart(), id: 'checkout-1' }),
     createCheckout: async () => ({
       ...createUcpCart(),
       id: 'checkout-1',
@@ -352,6 +357,7 @@ function createAdapterClient(): ShopwareUcpClient {
     updateCheckout: async (input) => {
       expect(input).toEqual({
         checkoutId: 'checkout-1',
+        lineItems: [{ productId: 'product-1', quantity: 2 }],
         buyer: createBuyer(),
         fulfillment: createFulfillment(),
       });
@@ -384,9 +390,10 @@ function assertCreateCheckoutRequest(requests: readonly RecordedRequest[]): void
 }
 
 function assertUpdateCheckoutRequest(requests: readonly RecordedRequest[]): void {
-  expect(requests[1]?.url).toBe('https://shop.example.test/ucp/v1/checkout-sessions/checkout-1');
-  expect(requests[1]?.body).toEqual({
+  expect(requests[2]?.url).toBe('https://shop.example.test/ucp/v1/checkout-sessions/checkout-1');
+  expect(requests[2]?.body).toEqual({
     id: 'checkout-1',
+    line_items: [{ item: { id: 'product-1' }, quantity: 2 }],
     buyer: {
       email: 'buyer@example.test',
       first_name: 'Ada',
@@ -408,10 +415,14 @@ function assertUpdateCheckoutRequest(requests: readonly RecordedRequest[]): void
 }
 
 function assertCompleteCheckoutRequest(requests: readonly RecordedRequest[]): void {
-  expect(requests[2]?.url).toBe(
+  expect(requests[3]?.url).toBe(
     'https://shop.example.test/ucp/v1/checkout-sessions/checkout-1/complete',
   );
-  expect(requests[2]?.body).toEqual({});
+  expect(requests[3]?.body).toEqual({ payment: { instruments: [] } });
+}
+
+function assertGetCheckoutRequest(requests: readonly RecordedRequest[]): void {
+  expect(requests[1]?.url).toBe('https://shop.example.test/ucp/v1/checkout-sessions/checkout-1');
 }
 
 async function expectRejectsWith(promise: Promise<unknown>, message: string): Promise<void> {

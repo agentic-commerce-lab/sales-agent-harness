@@ -103,8 +103,18 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     return parseCart(payload);
   }
 
+  async getCheckout(input: { readonly checkoutId: string }): Promise<ShopwareUcpCart> {
+    const payload = await this.#requestJson(
+      'GET',
+      `/ucp/v1/checkout-sessions/${encodeURIComponent(input.checkoutId)}`,
+    );
+
+    return parseCart(payload);
+  }
+
   async updateCheckout(input: {
     readonly checkoutId: string;
+    readonly lineItems: readonly CartItemInput[];
     readonly buyer: BuyerInput;
     readonly fulfillment: FulfillmentInput;
   }): Promise<ShopwareUcpCart> {
@@ -113,6 +123,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
       `/ucp/v1/checkout-sessions/${encodeURIComponent(input.checkoutId)}`,
       {
         id: input.checkoutId,
+        line_items: input.lineItems.map(toUcpLineItemPayload),
         buyer: toUcpBuyerPayload(input.buyer),
         fulfillment: toUcpFulfillmentPayload(input.fulfillment),
       },
@@ -125,7 +136,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     const payload = await this.#requestJson(
       'POST',
       `/ucp/v1/checkout-sessions/${encodeURIComponent(input.checkoutId)}/complete`,
-      {},
+      { payment: { instruments: [] } },
     );
 
     return parseCart(payload);

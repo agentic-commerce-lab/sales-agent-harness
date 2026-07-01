@@ -1,4 +1,5 @@
 import type {
+  CartItemInput,
   CartResult,
   CheckoutHandoffInput,
   CheckoutHandoffResult,
@@ -19,6 +20,7 @@ import {
   readUcpContinueUrl,
 } from './normalize-shopware-ucp.js';
 import type { ShopwareUcpClient } from './shopware-ucp-client.js';
+import type { ShopwareUcpCart, ShopwareUcpLineItem } from './shopware-ucp-types.js';
 
 export interface ShopwareUcpAdapterOptions {
   readonly client: ShopwareUcpClient;
@@ -125,8 +127,10 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
 
   async completeCheckout(input: CompleteCheckoutInput): Promise<CompletedCheckoutResult> {
     try {
+      const checkoutSession = await this.#client.getCheckout({ checkoutId: input.checkoutId });
       await this.#client.updateCheckout({
         checkoutId: input.checkoutId,
+        lineItems: readCheckoutLineItems(checkoutSession),
         buyer: input.buyer,
         fulfillment: input.fulfillment,
       });
@@ -149,4 +153,33 @@ function wrapShopwareUcpError(message: string, error: unknown): Error {
   }
 
   return new Error(message, { cause: error });
+}
+
+function readCheckoutLineItems(checkout: ShopwareUcpCart): readonly CartItemInput[] {
+  const lineItems = checkout.lineItems ?? checkout.line_items ?? [];
+
+  if (lineItems.length === 0) {
+    throw new Error(
+      'Shopware UCP checkout completion failed because the checkout has no line items',
+    );
+  }
+
+  return lineItems.map(readCheckoutLineItem);
+}
+
+function readCheckoutLineItem(lineItem: ShopwareUcpLineItem): CartItemInput {
+  const productId = lineItem.item?.id;
+
+  if (!productId) {
+    throw new Error('Shopware UCP checkout line item is missing item.id');
+  }
+
+  if (!Number.isInteger(lineItem.quantity) || lineItem.quantity <= 0) {
+    throw new Error(`Shopware UCP checkout line item ${productId} has an invalid quantity`);
+  }
+
+  return {
+    productId,
+    quantity: lineItem.quantity,
+  };
 }
