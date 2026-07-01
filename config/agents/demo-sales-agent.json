@@ -7,7 +7,8 @@
     "createCart",
     "updateCart",
     "getCartSummary",
-    "prepareCheckoutHandoff"
+    "prepareCheckoutHandoff",
+    "completeCheckout"
   ],
   "disabledCapabilities": [
     "quotes",
@@ -28,7 +29,7 @@
     },
     "maxItemQuantity": 5,
     "allowCheckoutHandoff": true,
-    "allowCheckoutCompletion": false,
+    "allowCheckoutCompletion": true,
     "requireHumanApprovalForCheckout": false,
     "unsupportedRegions": [],
     "confidentialFields": ["margin", "supplierCost", "shopwareContextToken"]
