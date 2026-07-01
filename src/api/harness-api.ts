@@ -44,6 +44,21 @@ export type CommerceApiRequest =
       readonly capability: 'completeCheckout';
       readonly agentSessionId: string;
       readonly checkoutId: string;
+      readonly buyer: {
+        readonly email: string;
+        readonly firstName?: string | undefined;
+        readonly lastName?: string | undefined;
+        readonly phoneNumber?: string | undefined;
+      };
+      readonly fulfillment: {
+        readonly type: 'shipping';
+        readonly shippingAddress: {
+          readonly street: string;
+          readonly zipcode: string;
+          readonly city: string;
+          readonly countryCode: string;
+        };
+      };
     };
 
 export type CommerceApiResponse =

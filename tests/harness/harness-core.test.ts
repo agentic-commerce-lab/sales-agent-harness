@@ -205,6 +205,8 @@ describe('HarnessCore checkout completion', () => {
     const result = await harness.completeCheckout({
       agentSessionId: 'session-1',
       checkoutId: 'checkout-1',
+      buyer: createBuyer(),
+      fulfillment: createFulfillment(),
     });
 
     expect(result.status).toBe('blocked');
@@ -218,6 +220,8 @@ describe('HarnessCore checkout completion', () => {
     const result = await harness.completeCheckout({
       agentSessionId: 'session-1',
       checkoutId: 'checkout-1',
+      buyer: createBuyer(),
+      fulfillment: createFulfillment(),
     });
 
     expect(result.status).toBe('ok');
@@ -226,3 +230,23 @@ describe('HarnessCore checkout completion', () => {
     expect(auditLogger.events.map((event) => event.type)).toContain('checkout_completion');
   });
 });
+
+function createBuyer() {
+  return {
+    email: 'buyer@example.test',
+    firstName: 'Ada',
+    lastName: 'Buyer',
+  };
+}
+
+function createFulfillment() {
+  return {
+    type: 'shipping' as const,
+    shippingAddress: {
+      street: 'Test Street 1',
+      zipcode: '12345',
+      city: 'Berlin',
+      countryCode: 'DE',
+    },
+  };
+}

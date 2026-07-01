@@ -286,6 +286,20 @@ async function callHarness(harness: CommerceHarnessApi, capability: HarnessCapab
         capability,
         agentSessionId: 'session-1',
         checkoutId: 'checkout-1',
+        buyer: {
+          email: 'buyer@example.test',
+          firstName: 'Ada',
+          lastName: 'Buyer',
+        },
+        fulfillment: {
+          type: 'shipping',
+          shippingAddress: {
+            street: 'Test Street 1',
+            zipcode: '12345',
+            city: 'Berlin',
+            countryCode: 'DE',
+          },
+        },
       });
     default:
       return assertNever(capability);

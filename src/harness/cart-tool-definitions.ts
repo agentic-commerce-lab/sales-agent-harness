@@ -89,6 +89,21 @@ export function createCompleteCheckoutTool(
   const schema = z.object({
     checkoutId: z.string(),
     explicitBuyerConfirmation: z.literal(true),
+    buyer: z.object({
+      email: z.email(),
+      firstName: z.string().min(1).optional(),
+      lastName: z.string().min(1).optional(),
+      phoneNumber: z.string().min(1).optional(),
+    }),
+    fulfillment: z.object({
+      type: z.literal('shipping'),
+      shippingAddress: z.object({
+        street: z.string().min(1),
+        zipcode: z.string().min(1),
+        city: z.string().min(1),
+        countryCode: z.string().min(2),
+      }),
+    }),
   });
 
   return {
@@ -102,6 +117,8 @@ export function createCompleteCheckoutTool(
       return harness.completeCheckout({
         agentSessionId: context.agentSessionId,
         checkoutId: parsed.checkoutId,
+        buyer: parsed.buyer,
+        fulfillment: parsed.fulfillment,
       });
     },
   };

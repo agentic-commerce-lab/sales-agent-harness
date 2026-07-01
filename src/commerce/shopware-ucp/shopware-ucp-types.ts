@@ -1,4 +1,4 @@
-import type { CartItemInput } from '../../contracts/commerce.js';
+import type { BuyerInput, CartItemInput, FulfillmentInput } from '../../contracts/commerce.js';
 
 export interface ShopwareUcpMoney {
   readonly amount: number;
@@ -87,6 +87,11 @@ export interface ShopwareUcpClient {
   createCheckout(input: {
     readonly cartId?: string | undefined;
     readonly lineItems: readonly CartItemInput[];
+  }): Promise<ShopwareUcpCart>;
+  updateCheckout(input: {
+    readonly checkoutId: string;
+    readonly buyer: BuyerInput;
+    readonly fulfillment: FulfillmentInput;
   }): Promise<ShopwareUcpCart>;
   completeCheckout(input: { readonly checkoutId: string }): Promise<ShopwareUcpCart>;
   getEmbeddedCheckoutUrl(checkoutId: string): string;

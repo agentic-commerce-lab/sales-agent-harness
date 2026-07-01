@@ -125,6 +125,11 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
 
   async completeCheckout(input: CompleteCheckoutInput): Promise<CompletedCheckoutResult> {
     try {
+      await this.#client.updateCheckout({
+        checkoutId: input.checkoutId,
+        buyer: input.buyer,
+        fulfillment: input.fulfillment,
+      });
       const checkout = await this.#client.completeCheckout({ checkoutId: input.checkoutId });
 
       return {

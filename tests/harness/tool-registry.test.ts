@@ -75,7 +75,12 @@ describe('createExecutableToolRegistry', () => {
       { agentSessionId: 'session-1' },
     );
     const completed = await completeCheckout?.execute(
-      { checkoutId: 'checkout-1', explicitBuyerConfirmation: true },
+      {
+        checkoutId: 'checkout-1',
+        explicitBuyerConfirmation: true,
+        buyer: createBuyer(),
+        fulfillment: createFulfillment(),
+      },
       { agentSessionId: 'session-1' },
     );
 
@@ -90,6 +95,14 @@ describe('createExecutableToolRegistry', () => {
       completeCheckout?.schema.safeParse({
         checkoutId: 'checkout-1',
         explicitBuyerConfirmation: false,
+        buyer: createBuyer(),
+        fulfillment: createFulfillment(),
+      }).success,
+    ).toBe(false);
+    expect(
+      completeCheckout?.schema.safeParse({
+        checkoutId: 'checkout-1',
+        explicitBuyerConfirmation: true,
       }).success,
     ).toBe(false);
     expect(calls).toEqual([{ agentSessionId: 'session-1', query: 'jacket', limit: 2 }]);
@@ -122,6 +135,27 @@ function createConfig(): AgentHarnessConfig {
     shopware: {
       salesChannelId: 'sales-channel-1',
       storefrontBaseUrl: 'https://shop.example.test',
+    },
+  };
+}
+
+function createBuyer() {
+  return {
+    email: 'buyer@example.test',
+    firstName: 'Ada',
+    lastName: 'Buyer',
+    phoneNumber: '+49123456789',
+  };
+}
+
+function createFulfillment() {
+  return {
+    type: 'shipping',
+    shippingAddress: {
+      street: 'Test Street 1',
+      zipcode: '12345',
+      city: 'Berlin',
+      countryCode: 'DE',
     },
   };
 }

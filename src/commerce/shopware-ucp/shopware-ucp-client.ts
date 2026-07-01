@@ -1,4 +1,4 @@
-import type { CartItemInput } from '../../contracts/commerce.js';
+import type { BuyerInput, CartItemInput, FulfillmentInput } from '../../contracts/commerce.js';
 import type { ShopwareEnvironmentConfig } from '../../env/shopware-config.js';
 import {
   readOptionalString,
@@ -103,6 +103,24 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     return parseCart(payload);
   }
 
+  async updateCheckout(input: {
+    readonly checkoutId: string;
+    readonly buyer: BuyerInput;
+    readonly fulfillment: FulfillmentInput;
+  }): Promise<ShopwareUcpCart> {
+    const payload = await this.#requestJson(
+      'PATCH',
+      `/ucp/v1/checkout-sessions/${encodeURIComponent(input.checkoutId)}`,
+      {
+        id: input.checkoutId,
+        buyer: toUcpBuyerPayload(input.buyer),
+        fulfillment: toUcpFulfillmentPayload(input.fulfillment),
+      },
+    );
+
+    return parseCart(payload);
+  }
+
   async completeCheckout(input: { readonly checkoutId: string }): Promise<ShopwareUcpCart> {
     const payload = await this.#requestJson(
       'POST',
@@ -151,11 +169,23 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Shopware UCP request failed with status ${response.status}`);
+      throw new Error(
+        `Shopware UCP request failed with status ${response.status}: ${await readErrorBody(response)}`,
+      );
     }
 
     return response.json();
   }
+}
+
+async function readErrorBody(response: Response): Promise<string> {
+  const text = await response.text();
+
+  if (!text) {
+    return 'empty response body';
+  }
+
+  return text.slice(0, 1000);
 }
 
 function createIdempotencyKey(): string {
@@ -166,6 +196,29 @@ function toUcpLineItemPayload(item: CartItemInput) {
   return {
     item: { id: item.productId },
     quantity: item.quantity,
+  };
+}
+
+function toUcpBuyerPayload(buyer: BuyerInput) {
+  return {
+    email: buyer.email,
+    ...(buyer.firstName ? { first_name: buyer.firstName } : {}),
+    ...(buyer.lastName ? { last_name: buyer.lastName } : {}),
+    ...(buyer.phoneNumber ? { phone_number: buyer.phoneNumber } : {}),
+  };
+}
+
+function toUcpFulfillmentPayload(fulfillment: FulfillmentInput) {
+  return {
+    type: fulfillment.type,
+    extra: {
+      shipping_address: {
+        street: fulfillment.shippingAddress.street,
+        zipcode: fulfillment.shippingAddress.zipcode,
+        city: fulfillment.shippingAddress.city,
+        country_code: fulfillment.shippingAddress.countryCode,
+      },
+    },
   };
 }
 

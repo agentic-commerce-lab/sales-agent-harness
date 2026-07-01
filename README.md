@@ -557,7 +557,29 @@ Automated selling is opt-in and only supported through the Shopware UCP adapter.
 - set `policies.allowCheckoutCompletion` to `true`
 - keep `policies.requireHumanApprovalForCheckout` set to `false` for the demo flow
 
-The `completeCheckout` tool requires `explicitBuyerConfirmation: true` and calls:
+The `completeCheckout` tool requires `explicitBuyerConfirmation: true`, buyer details, and a complete shipping address. The harness first updates the UCP checkout session with:
+
+```json
+{
+  "buyer": {
+    "email": "buyer@example.test",
+    "firstName": "Ada",
+    "lastName": "Buyer",
+    "phoneNumber": "+49123456789"
+  },
+  "fulfillment": {
+    "type": "shipping",
+    "shippingAddress": {
+      "street": "Test Street 1",
+      "zipcode": "12345",
+      "city": "Berlin",
+      "countryCode": "DE"
+    }
+  }
+}
+```
+
+Then it calls:
 
 ```http
 POST /ucp/v1/checkout-sessions/{checkoutId}/complete

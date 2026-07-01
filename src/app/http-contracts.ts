@@ -23,6 +23,23 @@ const cartItemSchema = z.object({
   quantity: z.number().int().positive(),
 });
 
+const buyerSchema = z.object({
+  email: z.email(),
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  phoneNumber: z.string().min(1).optional(),
+});
+
+const fulfillmentSchema = z.object({
+  type: z.literal('shipping'),
+  shippingAddress: z.object({
+    street: z.string().min(1),
+    zipcode: z.string().min(1),
+    city: z.string().min(1),
+    countryCode: z.string().min(2),
+  }),
+});
+
 const commerceRequestSchema = z.discriminatedUnion('capability', [
   z.object({
     capability: z.literal('searchProducts'),
@@ -60,6 +77,8 @@ const commerceRequestSchema = z.discriminatedUnion('capability', [
     capability: z.literal('completeCheckout'),
     agentSessionId: z.string().min(1),
     checkoutId: z.string().min(1),
+    buyer: buyerSchema,
+    fulfillment: fulfillmentSchema,
   }),
 ]);
 

@@ -80,8 +80,29 @@ export interface CheckoutHandoffInput {
   readonly executionContext?: CommerceExecutionContext;
 }
 
+export interface BuyerInput {
+  readonly email: string;
+  readonly firstName?: string | undefined;
+  readonly lastName?: string | undefined;
+  readonly phoneNumber?: string | undefined;
+}
+
+export interface ShippingAddressInput {
+  readonly street: string;
+  readonly zipcode: string;
+  readonly city: string;
+  readonly countryCode: string;
+}
+
+export interface FulfillmentInput {
+  readonly type: 'shipping';
+  readonly shippingAddress: ShippingAddressInput;
+}
+
 export interface CompleteCheckoutInput {
   readonly checkoutId: string;
+  readonly buyer: BuyerInput;
+  readonly fulfillment: FulfillmentInput;
   readonly executionContext?: CommerceExecutionContext;
 }
 
