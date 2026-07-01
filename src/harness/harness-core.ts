@@ -1,5 +1,6 @@
 import type {
   CommerceAdapter,
+  CompleteCheckoutInput,
   CreateCartInput,
   ProductDetailsInput,
   SearchProductsInput,
@@ -128,6 +129,18 @@ export class HarnessCore {
       });
 
       return handoff;
+    });
+  }
+
+  // fallow-ignore-next-line unused-class-member
+  async completeCheckout(input: HarnessRequest & CompleteCheckoutInput) {
+    return this.#executor.execute('completeCheckout', input, async (session) => {
+      const completed = await this.#adapter.completeCheckout(withCommerceContext(input, session));
+      this.#executor.recordAudit(session, 'checkout_completion', 'completeCheckout', {
+        cartId: completed.summary.cartId,
+      });
+
+      return completed;
     });
   }
 }

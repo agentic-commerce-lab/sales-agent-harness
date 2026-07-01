@@ -154,6 +154,7 @@ function createConfig(): AgentHarnessConfig {
       maxCartValue: { amount: 1000, currency: 'EUR' },
       maxItemQuantity: 5,
       allowCheckoutHandoff: true,
+      allowCheckoutCompletion: false,
       requireHumanApprovalForCheckout: false,
       unsupportedRegions: [],
       confidentialFields: ['shopwareContextToken'],

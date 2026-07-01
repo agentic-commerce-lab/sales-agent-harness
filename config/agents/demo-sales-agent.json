@@ -28,6 +28,7 @@
     },
     "maxItemQuantity": 5,
     "allowCheckoutHandoff": true,
+    "allowCheckoutCompletion": false,
     "requireHumanApprovalForCheckout": false,
     "unsupportedRegions": [],
     "confidentialFields": ["margin", "supplierCost", "shopwareContextToken"]

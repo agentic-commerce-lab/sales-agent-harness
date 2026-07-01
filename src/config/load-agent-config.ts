@@ -20,6 +20,7 @@ const agentPolicyConfigSchema = z.object({
   maxCartValue: moneyLimitSchema,
   maxItemQuantity: z.number().int().positive(),
   allowCheckoutHandoff: z.boolean(),
+  allowCheckoutCompletion: z.boolean().default(false),
   requireHumanApprovalForCheckout: z.boolean(),
   unsupportedRegions: z.array(z.string().min(1)),
   confidentialFields: z.array(z.string().min(1)),

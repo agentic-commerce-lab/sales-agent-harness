@@ -3,6 +3,7 @@ import type {
   CartResult,
   CheckoutHandoffResult,
   CommerceAdapter,
+  CompletedCheckoutResult,
   ProductDetailsResult,
   ProductSearchResult,
 } from '../../src/contracts/commerce.js';
@@ -21,6 +22,7 @@ function createConfig(): AgentHarnessConfig {
       'createCart',
       'getCartSummary',
       'prepareCheckoutHandoff',
+      'completeCheckout',
     ],
     disabledCapabilities: ['quotes', 'negotiation', 'payments', 'orderCreation'],
     policies: {
@@ -30,6 +32,7 @@ function createConfig(): AgentHarnessConfig {
       maxCartValue: { amount: 1000, currency: 'EUR' },
       maxItemQuantity: 5,
       allowCheckoutHandoff: true,
+      allowCheckoutCompletion: true,
       requireHumanApprovalForCheckout: false,
       unsupportedRegions: [],
       confidentialFields: ['shopwareContextToken'],
@@ -101,6 +104,51 @@ function createAdapter(): CommerceAdapter {
     prepareCheckoutHandoff: async (): Promise<CheckoutHandoffResult> => {
       throw new Error('Harness creates opaque handoffs itself');
     },
+    completeCheckout: async (): Promise<CompletedCheckoutResult> => ({
+      summary: cartResult.cart,
+      orderId: 'order-1',
+      status: 'completed',
+    }),
+  };
+}
+
+function createCheckoutCompletionDisabledHarness() {
+  let adapterCalls = 0;
+  const sessionStore = new InMemorySessionStore();
+  sessionStore.createSession({
+    agentSessionId: 'session-1',
+    merchantId: 'merchant-1',
+    agentId: 'agent-1',
+    channel: 'a2a',
+    customerContext: {},
+    createdAt: new Date('2026-06-30T12:00:00.000Z'),
+  });
+  sessionStore.setCommerceContext('session-1', {
+    shopwareSalesChannelId: 'sales-channel-1',
+    shopwareContextToken: 'secret-context-token',
+  });
+
+  return {
+    adapterCalls: () => adapterCalls,
+    harness: new HarnessCore({
+      config: {
+        ...createConfig(),
+        policies: { ...createConfig().policies, allowCheckoutCompletion: false },
+      },
+      adapter: {
+        ...createAdapter(),
+        completeCheckout: async () => {
+          adapterCalls += 1;
+          throw new Error('Adapter should not be called');
+        },
+      },
+      auditLogger: new InMemoryAuditLogger(),
+      handoffStore: new InMemoryHandoffStore({
+        now: () => new Date('2026-06-30T12:00:00.000Z'),
+      }),
+      sessionStore,
+      now: () => new Date('2026-06-30T12:00:00.000Z'),
+    }),
   };
 }
 
@@ -147,5 +195,34 @@ describe('HarnessCore', () => {
     expect(result.status).toBe('ok');
     expect(JSON.stringify(result)).not.toContain('secret-context-token');
     expect(result.value?.continueUrl).toContain('/agent-checkout?h=handoff_');
+  });
+});
+
+describe('HarnessCore checkout completion', () => {
+  test('blocks checkout completion when the policy disables automated selling', async () => {
+    const { adapterCalls, harness } = createCheckoutCompletionDisabledHarness();
+
+    const result = await harness.completeCheckout({
+      agentSessionId: 'session-1',
+      checkoutId: 'checkout-1',
+    });
+
+    expect(result.status).toBe('blocked');
+    expect(adapterCalls()).toBe(0);
+    expect(result.policyDecision?.reason).toBe('checkout_completion_disabled');
+  });
+
+  test('completes checkouts through the adapter when automated selling is explicitly enabled', async () => {
+    const { harness, auditLogger } = createHarness();
+
+    const result = await harness.completeCheckout({
+      agentSessionId: 'session-1',
+      checkoutId: 'checkout-1',
+    });
+
+    expect(result.status).toBe('ok');
+    expect(result.value?.orderId).toBe('order-1');
+    expect(JSON.stringify(result)).not.toContain('secret-context-token');
+    expect(auditLogger.events.map((event) => event.type)).toContain('checkout_completion');
   });
 });

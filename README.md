@@ -419,6 +419,7 @@ Enabled capabilities are configured per agent in `config/agents/demo-sales-agent
 - `updateCart`
 - `getCartSummary`
 - `prepareCheckoutHandoff`
+- `completeCheckout` for explicitly enabled UCP-only automated checkout
 
 Disabled capabilities are not registered as tools. Policy checks run before every commerce action, and blocked or escalated actions do not call the adapter.
 
@@ -438,6 +439,7 @@ Agent and merchant policy configuration is config-as-code JSON:
     "maxCartValue": { "amount": 1000, "currency": "EUR" },
     "maxItemQuantity": 5,
     "allowCheckoutHandoff": true,
+    "allowCheckoutCompletion": false,
     "requireHumanApprovalForCheckout": false,
     "unsupportedRegions": [],
     "confidentialFields": ["shopwareContextToken", "margin"]
@@ -546,6 +548,23 @@ Raw Shopware context tokens stay server-side in session and handoff stores.
 
 With `COMMERCE_ADAPTER_PROVIDER=ucp_shopware`, the harness delegates handoff creation to the `ShopwareUcpAdapter`. That adapter reads the UCP cart, creates a UCP checkout session through the Agentic Commerce plugin, and returns the plugin's `continueUrl`, for example an embedded UCP checkout URL.
 
+## Automated UCP Checkout
+
+Automated selling is opt-in and only supported through the Shopware UCP adapter. To let the agent place a real order, configure all of the following:
+
+- `COMMERCE_ADAPTER_PROVIDER=ucp_shopware` or `COMMERCE_ADAPTER_PROVIDER=shopware-ucp`
+- include `completeCheckout` in the agent `enabledCapabilities`
+- set `policies.allowCheckoutCompletion` to `true`
+- keep `policies.requireHumanApprovalForCheckout` set to `false` for the demo flow
+
+The `completeCheckout` tool requires `explicitBuyerConfirmation: true` and calls:
+
+```http
+POST /ucp/v1/checkout-sessions/{checkoutId}/complete
+```
+
+This creates a real Shopware order through the Agentic Commerce plugin. Do not enable it for production unless buyer authorization, payment handling, order limits, idempotency, and audit review are acceptable for the target sales channel.
+
 ## Observability
 
 Structured audit events cover sessions, user requests, agent responses, tool calls, policy decisions, Shopware calls, cart changes, blocked actions, errors, and checkout handoffs. Events include merchant, agent, session, channel, capability, policy decision, data source, and timestamp fields where applicable.
@@ -557,7 +576,7 @@ The MVP intentionally leaves these as future integrations:
 - Shopware MCP admin, diagnostic, and backoffice workflows
 - Checkout Gateway enforcement
 - Payment authorization protocols
-- Autonomous order placement
+- Production-grade autonomous order placement with payment mandates and PSP tokenization
 - Binding quotes
 - Custom discount negotiation
 - Customer account mutation

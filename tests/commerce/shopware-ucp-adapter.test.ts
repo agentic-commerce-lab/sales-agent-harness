@@ -58,6 +58,7 @@ describe('FetchShopwareUcpClient', () => {
       lineItems: [{ productId: 'product-1', quantity: 2 }],
       cartId: 'cart-1',
     });
+    await client.completeCheckout({ checkoutId: 'checkout-1' });
 
     expect(requests[0]?.url).toBe('https://shop.example.test/ucp/v1/checkout-sessions');
     expect(requests[0]?.headers.get('sw-access-key')).toBeNull();
@@ -75,6 +76,10 @@ describe('FetchShopwareUcpClient', () => {
         },
       ],
     });
+    expect(requests[1]?.url).toBe(
+      'https://shop.example.test/ucp/v1/checkout-sessions/checkout-1/complete',
+    );
+    expect(requests[1]?.body).toEqual({});
   });
 });
 
@@ -166,6 +171,12 @@ describe('ShopwareUcpAdapter', () => {
           id: 'checkout-1',
           continueUrl: 'https://shop.example.test/ucp/embedded/checkout/checkout-1',
         }),
+        completeCheckout: async () => ({
+          ...createUcpCart(),
+          id: 'checkout-1',
+          status: 'completed',
+          order: { id: 'order-1' },
+        }),
         getEmbeddedCheckoutUrl: (checkoutId) =>
           `https://shop.example.test/ucp/embedded/checkout/${checkoutId}`,
       },
@@ -184,6 +195,44 @@ describe('ShopwareUcpAdapter', () => {
     expect(JSON.stringify(handoff)).not.toContain('secret-context-token');
   });
 
+  test('completes a UCP checkout without exposing server-side context tokens', async () => {
+    const adapter = new ShopwareUcpAdapter({
+      client: {
+        searchProducts: async () => ({ products: [] }),
+        getProductDetails: async () => ({ id: 'product-1', title: 'Blue Jacket' }),
+        createCart: async () => createUcpCart(),
+        updateCart: async () => createUcpCart(),
+        getCart: async () => createUcpCart(),
+        createCheckout: async () => ({
+          ...createUcpCart(),
+          id: 'checkout-1',
+        }),
+        completeCheckout: async () => ({
+          ...createUcpCart(),
+          id: 'checkout-1',
+          status: 'completed',
+          order: { id: 'order-1' },
+        }),
+        getEmbeddedCheckoutUrl: (checkoutId) =>
+          `https://shop.example.test/ucp/embedded/checkout/${checkoutId}`,
+      },
+    });
+
+    const completed = await adapter.completeCheckout({
+      checkoutId: 'checkout-1',
+      executionContext: {
+        shopwareSalesChannelId: 'sales-channel-1',
+        shopwareContextToken: 'secret-context-token',
+      },
+    });
+
+    expect(completed.summary.cartId).toBe('checkout-1');
+    expect(completed.orderId).toBe('order-1');
+    expect(JSON.stringify(completed)).not.toContain('secret-context-token');
+  });
+});
+
+describe('ShopwareUcpAdapter total normalization', () => {
   test('normalizes UCP totals arrays and falls back to embedded checkout URLs', async () => {
     const adapter = new ShopwareUcpAdapter({
       client: {
@@ -195,6 +244,11 @@ describe('ShopwareUcpAdapter', () => {
         createCheckout: async () => ({
           ...createTotalsCart(),
           id: 'checkout-1',
+        }),
+        completeCheckout: async () => ({
+          ...createTotalsCart(),
+          id: 'checkout-1',
+          status: 'completed',
         }),
         getEmbeddedCheckoutUrl: (checkoutId) =>
           `https://shop.example.test/ucp/embedded/checkout/${checkoutId}`,

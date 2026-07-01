@@ -103,6 +103,16 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     return parseCart(payload);
   }
 
+  async completeCheckout(input: { readonly checkoutId: string }): Promise<ShopwareUcpCart> {
+    const payload = await this.#requestJson(
+      'POST',
+      `/ucp/v1/checkout-sessions/${encodeURIComponent(input.checkoutId)}/complete`,
+      {},
+    );
+
+    return parseCart(payload);
+  }
+
   // fallow-ignore-next-line unused-class-member
   getEmbeddedCheckoutUrl(checkoutId: string): string {
     return `${this.#baseUrl}/ucp/embedded/checkout/${encodeURIComponent(checkoutId)}`;
@@ -195,6 +205,7 @@ function parseCart(payload: unknown): ShopwareUcpCart {
 
   return {
     id: readString(record.id, 'UCP cart id'),
+    status: readOptionalString(record.status),
     currency: typeof record.currency === 'string' ? record.currency : 'EUR',
     lineItems: parseLineItems(record.lineItems),
     line_items: parseLineItems(record.line_items),
@@ -204,7 +215,16 @@ function parseCart(payload: unknown): ShopwareUcpCart {
     continue_url: readOptionalString(record.continue_url),
     links: parseLinks(record.links),
     totals: parseTotals(record.totals),
+    order: parseOrder(record.order),
   };
+}
+
+function parseOrder(payload: unknown): { readonly id?: string | undefined } | undefined {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return undefined;
+  }
+
+  return { id: readOptionalString(readRecord(payload).id) };
 }
 
 function parseLineItems(payload: unknown) {

@@ -92,17 +92,29 @@ export function evaluateCart(input: EvaluatePolicyInput): PolicyDecision | undef
 }
 
 export function evaluateCheckout(input: EvaluatePolicyInput): PolicyDecision | undefined {
-  if (input.capability !== 'prepareCheckoutHandoff') {
-    return undefined;
-  }
-
-  if (!input.config.policies.allowCheckoutHandoff) {
+  if (
+    input.capability === 'prepareCheckoutHandoff' &&
+    !input.config.policies.allowCheckoutHandoff
+  ) {
     return createDecision(
       input,
       'block',
       'checkout_handoff_disabled',
       'Checkout handoff is disabled by policy.',
     );
+  }
+
+  if (input.capability === 'completeCheckout' && !input.config.policies.allowCheckoutCompletion) {
+    return createDecision(
+      input,
+      'block',
+      'checkout_completion_disabled',
+      'Automated checkout completion is disabled by policy.',
+    );
+  }
+
+  if (input.capability !== 'prepareCheckoutHandoff' && input.capability !== 'completeCheckout') {
+    return undefined;
   }
 
   if (input.config.policies.requireHumanApprovalForCheckout) {

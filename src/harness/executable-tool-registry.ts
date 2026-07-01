@@ -3,6 +3,7 @@ import type { AgentHarnessConfig, HarnessCapability } from '../contracts/config.
 import {
   createCartSummaryTool,
   createCheckoutHandoffTool,
+  createCompleteCheckoutTool,
   createCreateCartTool,
   createUpdateCartTool,
 } from './cart-tool-definitions.js';
@@ -46,6 +47,10 @@ export interface HarnessToolExecutor {
     readonly agentSessionId: string;
     readonly cartId: string;
   }): Promise<unknown>;
+  completeCheckout(input: {
+    readonly agentSessionId: string;
+    readonly checkoutId: string;
+  }): Promise<unknown>;
 }
 
 export function createExecutableToolRegistry(
@@ -72,6 +77,8 @@ function createExecutableTool(
       return createCartSummaryTool(harness);
     case 'prepareCheckoutHandoff':
       return createCheckoutHandoffTool(harness);
+    case 'completeCheckout':
+      return createCompleteCheckoutTool(harness);
     default:
       return assertNever(capability);
   }

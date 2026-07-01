@@ -3,6 +3,8 @@ import type {
   CheckoutHandoffInput,
   CheckoutHandoffResult,
   CommerceAdapter,
+  CompleteCheckoutInput,
+  CompletedCheckoutResult,
   CreateCartInput,
   ProductDetailsInput,
   ProductDetailsResult,
@@ -118,6 +120,20 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
       };
     } catch (error) {
       throw new Error('Shopware UCP checkout handoff failed', { cause: error });
+    }
+  }
+
+  async completeCheckout(input: CompleteCheckoutInput): Promise<CompletedCheckoutResult> {
+    try {
+      const checkout = await this.#client.completeCheckout({ checkoutId: input.checkoutId });
+
+      return {
+        summary: normalizeUcpCart(checkout),
+        orderId: checkout.order?.id,
+        status: 'completed',
+      };
+    } catch (error) {
+      throw new Error('Shopware UCP checkout completion failed', { cause: error });
     }
   }
 }

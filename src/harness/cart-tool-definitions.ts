@@ -83,6 +83,30 @@ export function createCheckoutHandoffTool(
   };
 }
 
+export function createCompleteCheckoutTool(
+  harness: HarnessToolExecutor,
+): ExecutableHarnessToolDefinition {
+  const schema = z.object({
+    checkoutId: z.string(),
+    explicitBuyerConfirmation: z.literal(true),
+  });
+
+  return {
+    name: 'completeCheckout',
+    description:
+      'Complete a UCP checkout and place a real Shopware order only after explicit buyer confirmation.',
+    schema,
+    execute: (input, context) => {
+      const parsed = schema.parse(input);
+
+      return harness.completeCheckout({
+        agentSessionId: context.agentSessionId,
+        checkoutId: parsed.checkoutId,
+      });
+    },
+  };
+}
+
 const cartItemsSchema = z.array(
   z.object({
     productId: z.string(),

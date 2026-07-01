@@ -90,5 +90,9 @@ function parseCommerceAdapterProvider(value: string): CommerceAdapterProvider {
     return value;
   }
 
+  if (value === 'shopware-ucp') {
+    return 'ucp_shopware';
+  }
+
   throw new Error(`Unsupported COMMERCE_ADAPTER_PROVIDER ${value}`);
 }

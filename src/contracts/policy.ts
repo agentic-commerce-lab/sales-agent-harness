@@ -22,6 +22,7 @@ export type PolicyDecisionReason =
   | 'cart_value_limit_exceeded'
   | 'unsupported_region'
   | 'checkout_handoff_disabled'
+  | 'checkout_completion_disabled'
   | 'human_approval_required'
   | 'mvp_forbidden_action';
 

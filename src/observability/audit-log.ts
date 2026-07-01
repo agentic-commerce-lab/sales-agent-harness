@@ -11,6 +11,7 @@ export type AuditEventType =
   | 'cart_change'
   | 'blocked_action'
   | 'checkout_handoff'
+  | 'checkout_completion'
   | 'error';
 
 export type AuditDataSource =

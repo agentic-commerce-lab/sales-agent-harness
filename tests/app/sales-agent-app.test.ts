@@ -217,6 +217,7 @@ function createConfig(): AgentHarnessConfig {
       maxCartValue: { amount: 1000, currency: 'EUR' },
       maxItemQuantity: 5,
       allowCheckoutHandoff: true,
+      allowCheckoutCompletion: false,
       requireHumanApprovalForCheckout: false,
       unsupportedRegions: [],
       confidentialFields: ['shopwareContextToken'],
@@ -279,6 +280,11 @@ function createAdapter(): CommerceAdapter {
     prepareCheckoutHandoff: async () => ({
       summary: createCartSummary(),
       continueUrl: 'https://shop.example.test/checkout',
+    }),
+    completeCheckout: async () => ({
+      summary: createCartSummary(),
+      orderId: 'order-1',
+      status: 'completed',
     }),
   };
 }

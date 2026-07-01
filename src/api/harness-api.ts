@@ -1,6 +1,7 @@
 import type {
   CartResult,
   CheckoutHandoffResult,
+  CompletedCheckoutResult,
   ProductDetailsResult,
   ProductSearchResult,
 } from '../contracts/commerce.js';
@@ -38,13 +39,19 @@ export type CommerceApiRequest =
       readonly capability: 'prepareCheckoutHandoff';
       readonly agentSessionId: string;
       readonly cartId: string;
+    }
+  | {
+      readonly capability: 'completeCheckout';
+      readonly agentSessionId: string;
+      readonly checkoutId: string;
     };
 
 export type CommerceApiResponse =
   | HarnessResponse<ProductSearchResult>
   | HarnessResponse<ProductDetailsResult>
   | HarnessResponse<CartResult>
-  | HarnessResponse<CheckoutHandoffResult>;
+  | HarnessResponse<CheckoutHandoffResult>
+  | HarnessResponse<CompletedCheckoutResult>;
 
 export interface CommerceHarnessApi {
   searchProducts(
@@ -65,6 +72,9 @@ export interface CommerceHarnessApi {
   prepareCheckoutHandoff(
     input: Extract<CommerceApiRequest, { readonly capability: 'prepareCheckoutHandoff' }>,
   ): Promise<HarnessResponse<CheckoutHandoffResult>>;
+  completeCheckout(
+    input: Extract<CommerceApiRequest, { readonly capability: 'completeCheckout' }>,
+  ): Promise<HarnessResponse<CompletedCheckoutResult>>;
 }
 
 export async function dispatchCommerceRequest(
@@ -84,6 +94,8 @@ export async function dispatchCommerceRequest(
       return harness.getCartSummary(request);
     case 'prepareCheckoutHandoff':
       return harness.prepareCheckoutHandoff(request);
+    case 'completeCheckout':
+      return harness.completeCheckout(request);
     default:
       return assertNever(request);
   }

@@ -33,6 +33,7 @@ function createValidConfig() {
       },
       maxItemQuantity: 5,
       allowCheckoutHandoff: true,
+      allowCheckoutCompletion: false,
       requireHumanApprovalForCheckout: false,
       unsupportedRegions: ['US-CA'],
       confidentialFields: ['margin', 'supplierCost', 'shopwareContextToken'],
@@ -53,6 +54,18 @@ describe('parseAgentHarnessConfig', () => {
     expect(config.disabledCapabilities).toContain('payments');
     expect(config.policies.allowedChannels).toEqual(['customer_ui', 'a2a']);
     expect(config.policies.maxCartValue.amount).toBe(1000);
+    expect(config.policies.allowCheckoutCompletion).toBe(false);
+  });
+
+  test('defaults automated checkout completion to disabled for older configs', () => {
+    const config = createValidConfig();
+    const policies = Object.fromEntries(
+      Object.entries(config.policies).filter(([key]) => key !== 'allowCheckoutCompletion'),
+    );
+
+    expect(parseAgentHarnessConfig({ ...config, policies }).policies.allowCheckoutCompletion).toBe(
+      false,
+    );
   });
 
   test('rejects unknown enabled capabilities', () => {

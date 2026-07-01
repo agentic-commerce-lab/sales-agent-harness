@@ -150,6 +150,7 @@ function createConfig(
       maxCartValue: { amount: 1000, currency: 'EUR' },
       maxItemQuantity: 5,
       allowCheckoutHandoff: true,
+      allowCheckoutCompletion: false,
       requireHumanApprovalForCheckout: false,
       unsupportedRegions: [],
       confidentialFields: ['shopwareContextToken', 'margin'],
@@ -225,6 +226,9 @@ function createAdapter(calls: string[]): CommerceAdapter {
     prepareCheckoutHandoff: async (): Promise<CheckoutHandoffResult> => {
       throw new Error('Harness prepares checkout handoffs without adapter handoff execution');
     },
+    completeCheckout: async () => {
+      throw new Error('Automated checkout completion is not part of the safety fixture');
+    },
   };
 }
 
@@ -276,6 +280,12 @@ async function callHarness(harness: CommerceHarnessApi, capability: HarnessCapab
         capability,
         agentSessionId: 'session-1',
         cartId: 'cart-1',
+      });
+    case 'completeCheckout':
+      return harness.completeCheckout({
+        capability,
+        agentSessionId: 'session-1',
+        checkoutId: 'checkout-1',
       });
     default:
       return assertNever(capability);

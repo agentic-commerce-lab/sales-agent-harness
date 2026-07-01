@@ -1,6 +1,8 @@
 import type {
   CartResult,
   CommerceAdapter,
+  CompleteCheckoutInput,
+  CompletedCheckoutResult,
   CreateCartInput,
   ProductDetailsInput,
   ProductDetailsResult,
@@ -105,5 +107,10 @@ export class ShopwareAdapter implements CommerceAdapter {
       summary: summaryResult.cart,
       continueUrl: checkoutBaseUrl,
     };
+  }
+
+  // fallow-ignore-next-line unused-class-member
+  async completeCheckout(_input: CompleteCheckoutInput): Promise<CompletedCheckoutResult> {
+    throw new Error('Automated checkout completion requires the Shopware UCP adapter');
   }
 }

@@ -56,6 +56,11 @@ const commerceRequestSchema = z.discriminatedUnion('capability', [
     agentSessionId: z.string().min(1),
     cartId: z.string().min(1),
   }),
+  z.object({
+    capability: z.literal('completeCheckout'),
+    agentSessionId: z.string().min(1),
+    checkoutId: z.string().min(1),
+  }),
 ]);
 
 export const chatSchema = z.object({
@@ -103,6 +108,8 @@ export function parseCommerceRequest(input: unknown): CommerceApiRequest {
     case 'getCartSummary':
       return parsed;
     case 'prepareCheckoutHandoff':
+      return parsed;
+    case 'completeCheckout':
       return parsed;
     default:
       return assertNever(parsed);

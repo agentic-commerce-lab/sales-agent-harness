@@ -20,6 +20,7 @@ describe('createToolRegistry', () => {
         maxCartValue: { amount: 1000, currency: 'EUR' },
         maxItemQuantity: 5,
         allowCheckoutHandoff: true,
+        allowCheckoutCompletion: false,
         requireHumanApprovalForCheckout: false,
         unsupportedRegions: [],
         confidentialFields: [],
@@ -40,7 +41,12 @@ describe('createToolRegistry', () => {
 describe('createExecutableToolRegistry', () => {
   test('creates executable tools that delegate to harness methods with session context', async () => {
     const calls: unknown[] = [];
-    const registry = createExecutableToolRegistry(createConfig(), {
+    const config = {
+      ...createConfig(),
+      enabledCapabilities: ['searchProducts', 'createCart', 'completeCheckout'],
+      policies: { ...createConfig().policies, allowCheckoutCompletion: true },
+    } satisfies AgentHarnessConfig;
+    const registry = createExecutableToolRegistry(config, {
       searchProducts: async (input) => {
         calls.push(input);
         return { status: 'ok', value: { products: [] } };
@@ -55,20 +61,43 @@ describe('createExecutableToolRegistry', () => {
         status: 'blocked',
         policyDecision: createPolicyDecision(),
       }),
+      completeCheckout: async () => ({
+        status: 'ok',
+        value: { status: 'completed', summary: { cartId: 'checkout-1' }, orderId: 'order-1' },
+      }),
       updateCart: async () => ({ status: 'blocked', policyDecision: createPolicyDecision() }),
     });
     const searchProducts = registry.find((tool) => tool.name === 'searchProducts');
+    const completeCheckout = registry.find((tool) => tool.name === 'completeCheckout');
 
     const result = await searchProducts?.execute(
       { query: 'jacket', limit: 2 },
       { agentSessionId: 'session-1' },
     );
+    const completed = await completeCheckout?.execute(
+      { checkoutId: 'checkout-1', explicitBuyerConfirmation: true },
+      { agentSessionId: 'session-1' },
+    );
 
-    expect(registry.map((tool) => tool.name)).toEqual(['searchProducts', 'createCart']);
+    expect(registry.map((tool) => tool.name)).toEqual([
+      'searchProducts',
+      'createCart',
+      'completeCheckout',
+    ]);
     expect(searchProducts?.description).toContain('trusted merchant product data');
     expect(searchProducts?.schema.safeParse({ query: 'jacket', limit: 2 }).success).toBe(true);
+    expect(
+      completeCheckout?.schema.safeParse({
+        checkoutId: 'checkout-1',
+        explicitBuyerConfirmation: false,
+      }).success,
+    ).toBe(false);
     expect(calls).toEqual([{ agentSessionId: 'session-1', query: 'jacket', limit: 2 }]);
     expect(result).toEqual({ status: 'ok', value: { products: [] } });
+    expect(completed).toEqual({
+      status: 'ok',
+      value: { status: 'completed', summary: { cartId: 'checkout-1' }, orderId: 'order-1' },
+    });
   });
 });
 
@@ -85,6 +114,7 @@ function createConfig(): AgentHarnessConfig {
       maxCartValue: { amount: 1000, currency: 'EUR' },
       maxItemQuantity: 5,
       allowCheckoutHandoff: true,
+      allowCheckoutCompletion: false,
       requireHumanApprovalForCheckout: false,
       unsupportedRegions: [],
       confidentialFields: [],

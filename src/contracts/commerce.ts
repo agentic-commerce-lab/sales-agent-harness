@@ -80,6 +80,11 @@ export interface CheckoutHandoffInput {
   readonly executionContext?: CommerceExecutionContext;
 }
 
+export interface CompleteCheckoutInput {
+  readonly checkoutId: string;
+  readonly executionContext?: CommerceExecutionContext;
+}
+
 export interface ProductSearchResult {
   readonly products: readonly ProductSummary[];
   readonly dataSource: 'shopware_store_api' | 'shopware_ucp';
@@ -100,6 +105,12 @@ export interface CheckoutHandoffResult {
   readonly continueUrl: string;
 }
 
+export interface CompletedCheckoutResult {
+  readonly summary: CartSummary;
+  readonly orderId?: string | undefined;
+  readonly status: 'completed';
+}
+
 export interface CommerceAdapter {
   searchProducts(input: SearchProductsInput): Promise<ProductSearchResult>;
   getProductDetails(input: ProductDetailsInput): Promise<ProductDetailsResult>;
@@ -107,4 +118,5 @@ export interface CommerceAdapter {
   updateCart(input: UpdateCartInput): Promise<CartResult>;
   getCartSummary(input: CartSummaryInput): Promise<CartResult>;
   prepareCheckoutHandoff(input: CheckoutHandoffInput): Promise<CheckoutHandoffResult>;
+  completeCheckout(input: CompleteCheckoutInput): Promise<CompletedCheckoutResult>;
 }

@@ -65,6 +65,24 @@ function createHarness() {
         },
       };
     },
+    completeCheckout: async () => {
+      calls.push('completeCheckout');
+      return {
+        status: 'ok',
+        policyDecision: allowDecision,
+        value: {
+          summary: {
+            cartId: 'checkout-1',
+            items: [],
+            subtotal: { amount: 119, currency: 'EUR' },
+            total: { amount: 119, currency: 'EUR' },
+            currency: 'EUR',
+          },
+          orderId: 'order-1',
+          status: 'completed',
+        },
+      };
+    },
   } satisfies CommerceHarnessApi;
 
   return { calls, harness };

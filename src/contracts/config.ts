@@ -9,6 +9,7 @@ export const harnessCapabilities = [
   'updateCart',
   'getCartSummary',
   'prepareCheckoutHandoff',
+  'completeCheckout',
 ] as const;
 
 export type HarnessCapability = (typeof harnessCapabilities)[number];
@@ -37,6 +38,7 @@ export interface AgentPolicyConfig {
   readonly maxCartValue: MoneyLimit;
   readonly maxItemQuantity: number;
   readonly allowCheckoutHandoff: boolean;
+  readonly allowCheckoutCompletion: boolean;
   readonly requireHumanApprovalForCheckout: boolean;
   readonly unsupportedRegions: readonly string[];
   readonly confidentialFields: readonly string[];
