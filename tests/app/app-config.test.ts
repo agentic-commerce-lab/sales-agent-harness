@@ -21,7 +21,7 @@ describe('loadApplicationEnvironmentConfig', () => {
         apiKey: 'test-key',
         modelName: 'gpt-5-mini',
       },
-      shopware: {
+      commerce: {
         baseUrl: 'https://shop.example.test',
         storeApiAccessKey: 'store-api-key',
         defaultSalesChannelId: 'sales-channel-1',
@@ -43,8 +43,8 @@ describe('loadApplicationEnvironmentConfig', () => {
       SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL: 'true',
     });
 
-    expect(config.commerceAdapterProvider).toBe('ucp_shopware');
-    expect(config.shopware).toMatchObject({
+    expect(config.commerceAdapterProvider).toBe('ucp');
+    expect(config.commerce).toMatchObject({
       ucpAgentProfileUrl: 'https://platform.example/.well-known/ucp',
       ucpSigningKeyId: 'platform-key',
       ucpSigningPrivateKeyJwk: '{"kty":"EC"}',
@@ -61,7 +61,7 @@ describe('loadApplicationEnvironmentConfig', () => {
       COMMERCE_ADAPTER_PROVIDER: 'shopware-ucp',
     });
 
-    expect(config.commerceAdapterProvider).toBe('ucp_shopware');
+    expect(config.commerceAdapterProvider).toBe('ucp');
   });
 });
 

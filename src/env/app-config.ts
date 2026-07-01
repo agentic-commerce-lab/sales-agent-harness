@@ -4,13 +4,13 @@ import {
   loadAgentRuntimeEnvironmentConfig,
 } from './agent-runtime-config.js';
 import {
-  loadShopwareEnvironmentConfig,
-  type ShopwareEnvironmentConfig,
-  type ShopwareEnvironmentInput,
-} from './shopware-config.js';
+  type CommerceEnvironmentConfig,
+  type CommerceEnvironmentInput,
+  loadCommerceEnvironmentConfig,
+} from './commerce-config.js';
 
 export type AgentRuntimeProvider = 'deep_agents';
-export type CommerceAdapterProvider = 'shopware' | 'ucp_shopware';
+export type CommerceAdapterProvider = 'shopware' | 'ucp';
 
 export interface ApplicationEnvironmentConfig {
   readonly agentConfigPath: string;
@@ -19,12 +19,12 @@ export interface ApplicationEnvironmentConfig {
   readonly runtimeProvider: AgentRuntimeProvider;
   readonly commerceAdapterProvider: CommerceAdapterProvider;
   readonly runtime: AgentRuntimeEnvironmentConfig;
-  readonly shopware: ShopwareEnvironmentConfig;
+  readonly commerce: CommerceEnvironmentConfig;
 }
 
 export interface ApplicationEnvironmentInput
   extends AgentRuntimeEnvironmentInput,
-    ShopwareEnvironmentInput {
+    CommerceEnvironmentInput {
   readonly AGENT_CONFIG_PATH?: string | undefined;
   readonly HOST?: string | undefined;
   readonly PORT?: string | undefined;
@@ -59,7 +59,7 @@ export function loadApplicationEnvironmentConfig(
       env.COMMERCE_ADAPTER_PROVIDER ?? 'shopware',
     ),
     runtime: loadAgentRuntimeEnvironmentConfig(env),
-    shopware: loadShopwareEnvironmentConfig(env),
+    commerce: loadCommerceEnvironmentConfig(env),
   };
 }
 
@@ -86,12 +86,12 @@ function parseRuntimeProvider(value: string): AgentRuntimeProvider {
 }
 
 function parseCommerceAdapterProvider(value: string): CommerceAdapterProvider {
-  if (value === 'shopware' || value === 'ucp_shopware') {
+  if (value === 'shopware' || value === 'ucp') {
     return value;
   }
 
-  if (value === 'shopware-ucp') {
-    return 'ucp_shopware';
+  if (value === 'ucp_shopware' || value === 'shopware-ucp') {
+    return 'ucp';
   }
 
   throw new Error(`Unsupported COMMERCE_ADAPTER_PROVIDER ${value}`);

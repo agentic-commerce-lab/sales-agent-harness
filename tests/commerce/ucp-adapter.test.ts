@@ -1,11 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 
-import { ShopwareUcpAdapter } from '../../src/commerce/shopware-ucp/shopware-ucp-adapter.js';
-import {
-  FetchShopwareUcpClient,
-  type ShopwareUcpClient,
-} from '../../src/commerce/shopware-ucp/shopware-ucp-client.js';
-import { createUcpPlatformProfile } from '../../src/commerce/shopware-ucp/ucp-platform-profile.js';
+import { UcpAdapter } from '../../src/commerce/ucp/ucp-adapter.js';
+import { FetchUcpClient, type UcpClient } from '../../src/commerce/ucp/ucp-client.js';
+import { createUcpPlatformProfile } from '../../src/commerce/ucp/ucp-platform-profile.js';
 
 const minimalProfile = {
   ucp: { services: { 'dev.ucp.shopping': { endpoint: 'https://shop.example.test/ucp/v1' } } },
@@ -20,7 +17,7 @@ const testPrivateJwk = {
   d: 'RHeDokMvtGXfeoYZ7AcIcJLG-yI_SZgb3sUA-2RxgxI',
 };
 
-describe('FetchShopwareUcpClient', () => {
+describe('FetchUcpClient', () => {
   test('calls Agentic Commerce UCP REST endpoints without Store API credentials', async () => {
     const { client, requests } = createRecordingUcpClient();
 
@@ -44,7 +41,7 @@ describe('FetchShopwareUcpClient', () => {
   });
 });
 
-describe('FetchShopwareUcpClient endpoint discovery', () => {
+describe('FetchUcpClient endpoint discovery', () => {
   test('caches the discovered endpoint across multiple API calls', async () => {
     const discoveryCalls: string[] = [];
     const fetchImplementation = Object.assign(
@@ -65,7 +62,7 @@ describe('FetchShopwareUcpClient endpoint discovery', () => {
       { preconnect: () => {} },
     ) satisfies typeof fetch;
 
-    const client = new FetchShopwareUcpClient(createUcpConfig(), fetchImplementation);
+    const client = new FetchUcpClient(createUcpConfig(), fetchImplementation);
     await client.createCheckout({ lineItems: [{ productId: 'p1', quantity: 1 }] });
     await client.completeCheckout({ checkoutId: 'checkout-1' });
 
@@ -73,7 +70,7 @@ describe('FetchShopwareUcpClient endpoint discovery', () => {
   });
 
   test('throws a descriptive error when discovery returns 404', async () => {
-    const client = new FetchShopwareUcpClient(
+    const client = new FetchUcpClient(
       createUcpConfig(),
       Object.assign(async () => new Response('Not Found', { status: 404 }), {
         preconnect: () => {},
@@ -86,7 +83,7 @@ describe('FetchShopwareUcpClient endpoint discovery', () => {
   });
 
   test('throws a descriptive error when the profile is missing dev.ucp.shopping', async () => {
-    const client = new FetchShopwareUcpClient(
+    const client = new FetchUcpClient(
       createUcpConfig(),
       Object.assign(
         async () =>
@@ -131,9 +128,9 @@ describe('FetchShopwareUcpClient endpoint discovery', () => {
   });
 });
 
-describe('FetchShopwareUcpClient errors', () => {
+describe('FetchUcpClient errors', () => {
   test('includes UCP error response details in failed requests', async () => {
-    const client = new FetchShopwareUcpClient(
+    const client = new FetchUcpClient(
       {
         baseUrl: 'https://shop.example.test/',
         storeApiAccessKey: 'store-api-key',
@@ -159,7 +156,7 @@ describe('FetchShopwareUcpClient errors', () => {
 
     await expectRejectsWith(
       client.completeCheckout({ checkoutId: 'checkout-1' }),
-      'Shopware UCP request failed with status 422',
+      'UCP request failed with status 422',
     );
     await expectRejectsWith(
       client.completeCheckout({ checkoutId: 'checkout-1' }),
@@ -168,7 +165,7 @@ describe('FetchShopwareUcpClient errors', () => {
   });
 });
 
-describe('FetchShopwareUcpClient signing', () => {
+describe('FetchUcpClient signing', () => {
   test('signs UCP REST requests with RFC 9421 headers when a platform key is configured', async () => {
     const requests: { readonly headers: Headers; readonly body: string }[] = [];
     const fetchImplementation = Object.assign(
@@ -191,7 +188,7 @@ describe('FetchShopwareUcpClient signing', () => {
       },
       { preconnect: () => {} },
     ) satisfies typeof fetch;
-    const client = new FetchShopwareUcpClient(
+    const client = new FetchUcpClient(
       {
         baseUrl: 'https://shop.example.test/',
         storeApiAccessKey: 'store-api-key',
@@ -242,9 +239,9 @@ describe('createUcpPlatformProfile', () => {
   });
 });
 
-describe('ShopwareUcpAdapter', () => {
+describe('UcpAdapter', () => {
   test('creates checkout handoff from a UCP checkout continue URL', async () => {
-    const adapter = new ShopwareUcpAdapter({ client: createAdapterClient() });
+    const adapter = new UcpAdapter({ client: createAdapterClient() });
 
     const handoff = await adapter.prepareCheckoutHandoff({
       cartId: 'cart-1',
@@ -260,7 +257,7 @@ describe('ShopwareUcpAdapter', () => {
   });
 
   test('completes a UCP checkout without exposing server-side context tokens', async () => {
-    const adapter = new ShopwareUcpAdapter({ client: createAdapterClient() });
+    const adapter = new UcpAdapter({ client: createAdapterClient() });
 
     const completed = await adapter.completeCheckout({
       checkoutId: 'checkout-1',
@@ -278,12 +275,12 @@ describe('ShopwareUcpAdapter', () => {
   });
 
   test('includes UCP checkout failure details in adapter errors', async () => {
-    const adapter = new ShopwareUcpAdapter({
+    const adapter = new UcpAdapter({
       client: {
         ...createAdapterClient(),
         completeCheckout: async () => {
           throw new Error(
-            'Shopware UCP request failed with status 422: {"errors":["country_code is invalid"]}',
+            'UCP request failed with status 422: {"errors":["country_code is invalid"]}',
           );
         },
       },
@@ -295,17 +292,17 @@ describe('ShopwareUcpAdapter', () => {
       fulfillment: createFulfillment(),
     });
 
-    await expectRejectsWith(promise, 'Shopware UCP checkout completion failed');
+    await expectRejectsWith(promise, 'UCP checkout completion failed');
     await expectRejectsWith(
       promise,
-      'Shopware UCP request failed with status 422: {"errors":["country_code is invalid"]}',
+      'UCP request failed with status 422: {"errors":["country_code is invalid"]}',
     );
   });
 });
 
-describe('ShopwareUcpAdapter total normalization', () => {
+describe('UcpAdapter total normalization', () => {
   test('normalizes UCP totals arrays and falls back to embedded checkout URLs', async () => {
-    const adapter = new ShopwareUcpAdapter({
+    const adapter = new UcpAdapter({
       client: {
         searchProducts: async () => ({ products: [] }),
         getProductDetails: async () => ({ id: 'product-1', title: 'Blue Jacket' }),
@@ -389,7 +386,7 @@ interface RecordedRequest {
 }
 
 function createRecordingUcpClient(profile: unknown = minimalProfile): {
-  readonly client: FetchShopwareUcpClient;
+  readonly client: FetchUcpClient;
   readonly requests: readonly RecordedRequest[];
 } {
   const requests: RecordedRequest[] = [];
@@ -416,7 +413,7 @@ function createRecordingUcpClient(profile: unknown = minimalProfile): {
   ) satisfies typeof fetch;
 
   return {
-    client: new FetchShopwareUcpClient(createUcpConfig(), fetchImplementation),
+    client: new FetchUcpClient(createUcpConfig(), fetchImplementation),
     requests,
   };
 }
@@ -443,7 +440,7 @@ function createUcpConfig() {
   };
 }
 
-function createAdapterClient(): ShopwareUcpClient {
+function createAdapterClient(): UcpClient {
   return {
     searchProducts: async () => ({ products: [] }),
     getProductDetails: async () => ({

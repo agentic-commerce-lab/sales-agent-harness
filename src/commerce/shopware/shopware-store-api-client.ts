@@ -1,5 +1,5 @@
 import type { CartItemInput, CommerceExecutionContext } from '../../contracts/commerce.js';
-import type { ShopwareEnvironmentConfig } from '../../env/shopware-config.js';
+import type { CommerceEnvironmentConfig as ShopwareEnvironmentConfig } from '../../env/commerce-config.js';
 import { parseCart } from './shopware-store-api-cart-parsers.js';
 import {
   createFetchShopwareStoreApiHttpClient,

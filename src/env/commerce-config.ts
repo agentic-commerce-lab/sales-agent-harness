@@ -1,4 +1,4 @@
-export interface ShopwareEnvironmentConfig {
+export interface CommerceEnvironmentConfig {
   readonly baseUrl: string;
   readonly storeApiAccessKey: string;
   readonly defaultSalesChannelId: string;
@@ -8,7 +8,7 @@ export interface ShopwareEnvironmentConfig {
   readonly ucpAllowInsecureProfileUrl?: boolean | undefined;
 }
 
-export interface ShopwareEnvironmentInput {
+export interface CommerceEnvironmentInput {
   readonly SHOPWARE_BASE_URL?: string | undefined;
   readonly SHOPWARE_STORE_API_ACCESS_KEY?: string | undefined;
   readonly SHOPWARE_DEFAULT_SALES_CHANNEL_ID?: string | undefined;
@@ -18,8 +18,8 @@ export interface ShopwareEnvironmentInput {
   readonly SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL?: string | undefined;
 }
 
-export function loadShopwareEnvironmentConfig(
-  env: ShopwareEnvironmentInput = {
+export function loadCommerceEnvironmentConfig(
+  env: CommerceEnvironmentInput = {
     SHOPWARE_BASE_URL: process.env.SHOPWARE_BASE_URL,
     SHOPWARE_STORE_API_ACCESS_KEY: process.env.SHOPWARE_STORE_API_ACCESS_KEY,
     SHOPWARE_DEFAULT_SALES_CHANNEL_ID: process.env.SHOPWARE_DEFAULT_SALES_CHANNEL_ID,
@@ -28,7 +28,7 @@ export function loadShopwareEnvironmentConfig(
     SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK: process.env.SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK,
     SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL: process.env.SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL,
   },
-): ShopwareEnvironmentConfig {
+): CommerceEnvironmentConfig {
   const baseUrl = readRequiredEnv(env.SHOPWARE_BASE_URL, 'SHOPWARE_BASE_URL');
   const storeApiAccessKey = readRequiredEnv(
     env.SHOPWARE_STORE_API_ACCESS_KEY,
@@ -51,7 +51,7 @@ export function loadShopwareEnvironmentConfig(
   };
 }
 
-function readUcpSigningConfig(env: ShopwareEnvironmentInput):
+function readUcpSigningConfig(env: CommerceEnvironmentInput):
   | {
       readonly ucpSigningKeyId: string;
       readonly ucpSigningPrivateKeyJwk: string;

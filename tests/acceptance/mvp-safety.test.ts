@@ -95,7 +95,7 @@ describe('MVP safety acceptance commerce flow', () => {
     expect(handoff.value?.continueUrl).toContain('h=handoff_');
     expect(JSON.stringify(handoff)).not.toContain('secret-context-token');
     expect(auditLogger.events.map((event) => event.type)).toContain('policy_decision');
-    expect(auditLogger.events.map((event) => event.type)).toContain('shopware_call');
+    expect(auditLogger.events.map((event) => event.type)).toContain('commerce_call');
     expect(auditLogger.events.map((event) => event.type)).toContain('cart_change');
     expect(auditLogger.events.map((event) => event.type)).toContain('checkout_handoff');
 

@@ -7,18 +7,14 @@ export type AuditEventType =
   | 'agent_response'
   | 'tool_call'
   | 'policy_decision'
-  | 'shopware_call'
+  | 'commerce_call'
   | 'cart_change'
   | 'blocked_action'
   | 'checkout_handoff'
   | 'checkout_completion'
   | 'error';
 
-export type AuditDataSource =
-  | 'shopware_store_api'
-  | 'shopware_ucp'
-  | 'policy_config'
-  | 'session_store';
+export type AuditDataSource = 'shopware_store_api' | 'ucp' | 'policy_config' | 'session_store';
 
 export interface AuditEvent {
   readonly type: AuditEventType;

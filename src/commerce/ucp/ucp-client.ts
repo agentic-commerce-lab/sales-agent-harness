@@ -1,29 +1,29 @@
 import type { BuyerInput, CartItemInput, FulfillmentInput } from '../../contracts/commerce.js';
-import type { ShopwareEnvironmentConfig } from '../../env/shopware-config.js';
+import type { CommerceEnvironmentConfig } from '../../env/commerce-config.js';
 import {
   readOptionalString,
   readRecord,
   readString,
 } from '../shopware/shopware-store-api-readers.js';
-import type {
-  ShopwareUcpCart,
-  ShopwareUcpClient,
-  ShopwareUcpMoney,
-  ShopwareUcpProduct,
-  ShopwareUcpProductSearchResponse,
-} from './shopware-ucp-types.js';
 import { escapeSfString, UcpHttpSigner } from './ucp-http-signature.js';
+import type {
+  UcpCart,
+  UcpClient,
+  UcpMoney,
+  UcpProduct,
+  UcpProductSearchResponse,
+} from './ucp-types.js';
 
-export type * from './shopware-ucp-types.js';
+export type * from './ucp-types.js';
 
-export class FetchShopwareUcpClient implements ShopwareUcpClient {
+export class FetchUcpClient implements UcpClient {
   readonly #baseUrl: string;
   readonly #fetch: typeof fetch;
   readonly #agentProfileUrl: string;
   readonly #signer: UcpHttpSigner | undefined;
   #endpointPromise: Promise<string> | undefined;
 
-  constructor(config: ShopwareEnvironmentConfig, fetchImplementation: typeof fetch = fetch) {
+  constructor(config: CommerceEnvironmentConfig, fetchImplementation: typeof fetch = fetch) {
     this.#baseUrl = config.baseUrl.replace(/\/$/, '');
     this.#fetch = fetchImplementation;
     this.#agentProfileUrl = config.ucpAgentProfileUrl ?? `${this.#baseUrl}/.well-known/ucp`;
@@ -39,7 +39,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
   async searchProducts(input: {
     readonly query: string;
     readonly limit?: number;
-  }): Promise<ShopwareUcpProductSearchResponse> {
+  }): Promise<UcpProductSearchResponse> {
     const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson('POST', `${ep}/catalog/search`, {
       query: input.query,
@@ -50,7 +50,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
   }
 
   // fallow-ignore-next-line unused-class-member
-  async getProductDetails(input: { readonly productId: string }): Promise<ShopwareUcpProduct> {
+  async getProductDetails(input: { readonly productId: string }): Promise<UcpProduct> {
     const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson('POST', `${ep}/catalog/lookup`, {
       ids: [input.productId],
@@ -66,7 +66,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
   }
 
   // fallow-ignore-next-line unused-class-member
-  async createCart(input: { readonly items: readonly CartItemInput[] }): Promise<ShopwareUcpCart> {
+  async createCart(input: { readonly items: readonly CartItemInput[] }): Promise<UcpCart> {
     const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson('POST', `${ep}/carts`, {
       line_items: input.items.map(toUcpLineItemPayload),
@@ -79,7 +79,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
   async updateCart(input: {
     readonly cartId: string;
     readonly items: readonly CartItemInput[];
-  }): Promise<ShopwareUcpCart> {
+  }): Promise<UcpCart> {
     const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson('PATCH', `${ep}/carts/${input.cartId}`, {
       id: input.cartId,
@@ -90,7 +90,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
   }
 
   // fallow-ignore-next-line unused-class-member
-  async getCart(input: { readonly cartId: string }): Promise<ShopwareUcpCart> {
+  async getCart(input: { readonly cartId: string }): Promise<UcpCart> {
     const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson('GET', `${ep}/carts/${input.cartId}`);
 
@@ -100,7 +100,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
   async createCheckout(input: {
     readonly cartId?: string | undefined;
     readonly lineItems: readonly CartItemInput[];
-  }): Promise<ShopwareUcpCart> {
+  }): Promise<UcpCart> {
     const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson('POST', `${ep}/checkout-sessions`, {
       ...(input.cartId ? { cart_id: input.cartId } : {}),
@@ -110,7 +110,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     return parseCart(payload);
   }
 
-  async getCheckout(input: { readonly checkoutId: string }): Promise<ShopwareUcpCart> {
+  async getCheckout(input: { readonly checkoutId: string }): Promise<UcpCart> {
     const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson(
       'GET',
@@ -125,7 +125,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     readonly lineItems: readonly CartItemInput[];
     readonly buyer: BuyerInput;
     readonly fulfillment: FulfillmentInput;
-  }): Promise<ShopwareUcpCart> {
+  }): Promise<UcpCart> {
     const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson(
       'PATCH',
@@ -141,7 +141,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     return parseCart(payload);
   }
 
-  async completeCheckout(input: { readonly checkoutId: string }): Promise<ShopwareUcpCart> {
+  async completeCheckout(input: { readonly checkoutId: string }): Promise<UcpCart> {
     const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson(
       'POST',
@@ -154,7 +154,6 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
 
   // fallow-ignore-next-line unused-class-member
   getEmbeddedCheckoutUrl(checkoutId: string): string {
-    // Shopware-specific fallback URL; used only when the vendor response lacks continue_url
     return `${this.#baseUrl}/ucp/embedded/checkout/${encodeURIComponent(checkoutId)}`;
   }
 
@@ -217,7 +216,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
 
     if (!response.ok) {
       throw new Error(
-        `Shopware UCP request failed with status ${response.status}: ${await readErrorBody(response)}`,
+        `UCP request failed with status ${response.status}: ${await readErrorBody(response)}`,
       );
     }
 
@@ -291,7 +290,7 @@ function toUcpFulfillmentPayload(fulfillment: FulfillmentInput) {
   };
 }
 
-function parseProductSearchResponse(payload: unknown): ShopwareUcpProductSearchResponse {
+function parseProductSearchResponse(payload: unknown): UcpProductSearchResponse {
   const record = readRecord(payload);
   const products = record.products ?? record.items ?? record.results;
 
@@ -304,7 +303,7 @@ function parseProductSearchResponse(payload: unknown): ShopwareUcpProductSearchR
   };
 }
 
-function parseProduct(payload: unknown): ShopwareUcpProduct {
+function parseProduct(payload: unknown): UcpProduct {
   const record = readRecord(payload);
   const id = readString(record.id, 'UCP product id');
 
@@ -322,7 +321,7 @@ function parseProduct(payload: unknown): ShopwareUcpProduct {
   };
 }
 
-function parseCart(payload: unknown): ShopwareUcpCart {
+function parseCart(payload: unknown): UcpCart {
   const record = readRecord(payload);
 
   return {
@@ -370,11 +369,10 @@ function parseLineItems(payload: unknown) {
   });
 }
 
-function parseOptionalProduct(payload: unknown): ShopwareUcpProduct | undefined {
+function parseOptionalProduct(payload: unknown): UcpProduct | undefined {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     return undefined;
   }
-
   return parseProduct(payload);
 }
 
@@ -382,20 +380,15 @@ function parseMoneySummary(payload: unknown) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     return undefined;
   }
-
   const record = readRecord(payload);
-
-  return {
-    subtotal: parseMoney(record.subtotal),
-    total: parseMoney(record.total),
-  };
+  return { subtotal: parseMoney(record.subtotal), total: parseMoney(record.total) };
 }
 
-function parseMoneyOrNumber(payload: unknown): ShopwareUcpMoney | number | undefined {
+function parseMoneyOrNumber(payload: unknown): UcpMoney | number | undefined {
   return typeof payload === 'number' ? payload : parseMoney(payload);
 }
 
-function parseMoney(payload: unknown): ShopwareUcpMoney | undefined {
+function parseMoney(payload: unknown): UcpMoney | undefined {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     return undefined;
   }
@@ -465,7 +458,7 @@ function parseTotals(payload: unknown) {
       }
     }
 
-    // Shopware flat form: amount is a plain number
+    // Flat form: amount is a plain number
     if (typeof record.amount === 'number') {
       return [{ type, amount: record.amount, currency: readOptionalString(record.currency) }];
     }

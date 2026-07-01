@@ -1,7 +1,7 @@
 import { ShopwareAdapter } from '../commerce/shopware/shopware-adapter.js';
 import { FetchShopwareStoreApiClient } from '../commerce/shopware/shopware-store-api-client.js';
-import { ShopwareUcpAdapter } from '../commerce/shopware-ucp/shopware-ucp-adapter.js';
-import { FetchShopwareUcpClient } from '../commerce/shopware-ucp/shopware-ucp-client.js';
+import { UcpAdapter } from '../commerce/ucp/ucp-adapter.js';
+import { FetchUcpClient } from '../commerce/ucp/ucp-client.js';
 import { loadAgentHarnessConfig } from '../config/load-agent-config.js';
 import type { AgentHarnessConfig } from '../contracts/config.js';
 import {
@@ -20,15 +20,15 @@ export interface CreateRunnableSalesAgentHarnessAppInput {
 export function createRunnableSalesAgentHarnessApp(
   input: CreateRunnableSalesAgentHarnessAppInput,
 ): SalesAgentHarnessApp {
-  const agentConfig = withRuntimeShopwareConfig(input.agentConfig, input.environment);
+  const agentConfig = withRuntimeCommerceConfig(input.agentConfig, input.environment);
   const adapter =
-    input.environment.commerceAdapterProvider === 'ucp_shopware'
-      ? new ShopwareUcpAdapter({
-          client: new FetchShopwareUcpClient(input.environment.shopware, input.fetchImplementation),
+    input.environment.commerceAdapterProvider === 'ucp'
+      ? new UcpAdapter({
+          client: new FetchUcpClient(input.environment.commerce, input.fetchImplementation),
         })
       : new ShopwareAdapter({
           client: new FetchShopwareStoreApiClient(
-            input.environment.shopware,
+            input.environment.commerce,
             input.fetchImplementation,
           ),
           confidentialFields: agentConfig.policies.confidentialFields,
@@ -37,8 +37,7 @@ export function createRunnableSalesAgentHarnessApp(
   return createSalesAgentHarnessApp({
     config: agentConfig,
     adapter,
-    checkoutHandoffMode:
-      input.environment.commerceAdapterProvider === 'ucp_shopware' ? 'adapter' : 'local',
+    checkoutHandoffMode: input.environment.commerceAdapterProvider === 'ucp' ? 'adapter' : 'local',
     runtimeFactory: ({ tools }) =>
       createLangGraphDeepAgentRuntime({
         apiKey: input.environment.runtime.apiKey,
@@ -63,7 +62,7 @@ export async function createConfiguredSalesAgentHarnessApp(
   };
 }
 
-function withRuntimeShopwareConfig(
+function withRuntimeCommerceConfig(
   agentConfig: AgentHarnessConfig,
   environment: ApplicationEnvironmentConfig,
 ): AgentHarnessConfig {
@@ -71,8 +70,8 @@ function withRuntimeShopwareConfig(
     ...agentConfig,
     shopware: {
       ...agentConfig.shopware,
-      salesChannelId: environment.shopware.defaultSalesChannelId,
-      storefrontBaseUrl: environment.shopware.baseUrl,
+      salesChannelId: environment.commerce.defaultSalesChannelId,
+      storefrontBaseUrl: environment.commerce.baseUrl,
     },
   };
 }

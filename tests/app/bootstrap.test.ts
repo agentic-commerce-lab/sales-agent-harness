@@ -35,7 +35,7 @@ test('createRunnableSalesAgentHarnessApp uses the Shopware environment URL for c
         apiKey: 'test-key',
         modelName: 'gpt-5-mini',
       },
-      shopware: {
+      commerce: {
         baseUrl: 'http://host.docker.internal',
         storeApiAccessKey: 'store-api-key',
         defaultSalesChannelId: 'sales-channel-1',
@@ -71,12 +71,12 @@ test('createRunnableSalesAgentHarnessApp can use Agentic Commerce UCP checkout h
       host: '127.0.0.1',
       port: 3000,
       runtimeProvider: 'deep_agents',
-      commerceAdapterProvider: 'ucp_shopware',
+      commerceAdapterProvider: 'ucp',
       runtime: {
         apiKey: 'test-key',
         modelName: 'gpt-5-mini',
       },
-      shopware: {
+      commerce: {
         baseUrl: 'https://shop.example.test',
         storeApiAccessKey: 'store-api-key',
         defaultSalesChannelId: 'sales-channel-1',

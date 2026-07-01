@@ -27,7 +27,7 @@ export async function runAllowedHarnessAction<T>(
 ): Promise<HarnessResponse<T>> {
   try {
     input.recordAudit(input.session, 'tool_call', input.capability);
-    input.recordAudit(input.session, 'shopware_call', input.capability);
+    input.recordAudit(input.session, 'commerce_call', input.capability);
     const value = await input.run(input.session);
     input.recordResult(input.session, input.capability, value);
 

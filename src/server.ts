@@ -1,27 +1,27 @@
 import { createConfiguredSalesAgentHarnessApp } from './app/bootstrap.js';
 import { createSalesAgentHttpHandler } from './app/http-handler.js';
-import { createUcpPlatformProfile } from './commerce/shopware-ucp/ucp-platform-profile.js';
+import { createUcpPlatformProfile } from './commerce/ucp/ucp-platform-profile.js';
 
 const { app, environment } = await createConfiguredSalesAgentHarnessApp();
 const handler = createSalesAgentHttpHandler({
   app,
-  ...(environment.shopware.ucpAgentProfileUrl &&
-  environment.shopware.ucpSigningKeyId &&
-  environment.shopware.ucpSigningPrivateKeyJwk
+  ...(environment.commerce.ucpAgentProfileUrl &&
+  environment.commerce.ucpSigningKeyId &&
+  environment.commerce.ucpSigningPrivateKeyJwk
     ? {
         ucpPlatformProfile: createUcpPlatformProfile({
-          profileUrl: environment.shopware.ucpAgentProfileUrl,
-          signingKeyId: environment.shopware.ucpSigningKeyId,
-          signingPrivateKeyJwk: environment.shopware.ucpSigningPrivateKeyJwk,
-          allowInsecureProfileUrl: environment.shopware.ucpAllowInsecureProfileUrl,
+          profileUrl: environment.commerce.ucpAgentProfileUrl,
+          signingKeyId: environment.commerce.ucpSigningKeyId,
+          signingPrivateKeyJwk: environment.commerce.ucpSigningPrivateKeyJwk,
+          allowInsecureProfileUrl: environment.commerce.ucpAllowInsecureProfileUrl,
         }),
       }
     : {}),
-  ...(environment.shopware.storeApiAccessKey
+  ...(environment.commerce.storeApiAccessKey
     ? {
         checkoutResume: {
-          shopwareBaseUrl: environment.shopware.baseUrl,
-          shopwareAccessKey: environment.shopware.storeApiAccessKey,
+          shopwareBaseUrl: environment.commerce.baseUrl,
+          shopwareAccessKey: environment.commerce.storeApiAccessKey,
         },
       }
     : {}),

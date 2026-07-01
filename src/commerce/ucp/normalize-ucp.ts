@@ -5,16 +5,11 @@ import type {
   ProductDetails,
   ProductSummary,
 } from '../../contracts/commerce.js';
-import type {
-  ShopwareUcpCart,
-  ShopwareUcpLineItem,
-  ShopwareUcpMoney,
-  ShopwareUcpProduct,
-} from './shopware-ucp-types.js';
+import type { UcpCart, UcpLineItem, UcpMoney, UcpProduct } from './ucp-types.js';
 
 const defaultCurrency = 'EUR';
 
-export function normalizeUcpProduct(product: ShopwareUcpProduct): ProductSummary {
+export function normalizeUcpProduct(product: UcpProduct): ProductSummary {
   const price = normalizeProductPrice(product);
 
   return {
@@ -28,7 +23,7 @@ export function normalizeUcpProduct(product: ShopwareUcpProduct): ProductSummary
   };
 }
 
-export function normalizeUcpProductDetails(product: ShopwareUcpProduct): ProductDetails {
+export function normalizeUcpProductDetails(product: UcpProduct): ProductDetails {
   return {
     ...normalizeUcpProduct(product),
     attributes: {},
@@ -36,7 +31,7 @@ export function normalizeUcpProductDetails(product: ShopwareUcpProduct): Product
   };
 }
 
-export function normalizeUcpCart(cart: ShopwareUcpCart): CartSummary {
+export function normalizeUcpCart(cart: UcpCart): CartSummary {
   const currency =
     cart.currency ??
     cart.money_summary?.total?.currency ??
@@ -54,7 +49,7 @@ export function normalizeUcpCart(cart: ShopwareUcpCart): CartSummary {
   };
 }
 
-export function readUcpContinueUrl(checkout: ShopwareUcpCart): string | undefined {
+export function readUcpContinueUrl(checkout: UcpCart): string | undefined {
   const direct = checkout.continue_url ?? checkout.continueUrl;
   if (direct) {
     return direct;
@@ -68,7 +63,7 @@ export function readUcpContinueUrl(checkout: ShopwareUcpCart): string | undefine
   return undefined;
 }
 
-function normalizeProductPrice(product: ShopwareUcpProduct): Money | undefined {
+function normalizeProductPrice(product: UcpProduct): Money | undefined {
   if (typeof product.price === 'number') {
     return normalizeRequiredMoney(product.price, defaultCurrency);
   }
@@ -80,7 +75,7 @@ function normalizeProductPrice(product: ShopwareUcpProduct): Money | undefined {
   return product.priceRange?.min ?? product.price_range?.min;
 }
 
-function normalizeLineItem(item: ShopwareUcpLineItem, cartCurrency: string): CartLineItem {
+function normalizeLineItem(item: UcpLineItem, cartCurrency: string): CartLineItem {
   const product = item.item;
   const unitPrice = lineItemUnitPrice(item, cartCurrency);
 
@@ -93,7 +88,7 @@ function normalizeLineItem(item: ShopwareUcpLineItem, cartCurrency: string): Car
   };
 }
 
-function normalizeCartMoney(cart: ShopwareUcpCart, currency: string) {
+function normalizeCartMoney(cart: UcpCart, currency: string) {
   const summary = cart.money_summary ?? cart.moneySummary;
 
   return {
@@ -108,7 +103,7 @@ function normalizeCartMoney(cart: ShopwareUcpCart, currency: string) {
   };
 }
 
-function lineItemUnitPrice(item: ShopwareUcpLineItem, cartCurrency: string): Money {
+function lineItemUnitPrice(item: UcpLineItem, cartCurrency: string): Money {
   const productPrice = normalizeProductPrice(item.item ?? { id: item.id ?? 'unknown-product' });
 
   return (
@@ -116,7 +111,7 @@ function lineItemUnitPrice(item: ShopwareUcpLineItem, cartCurrency: string): Mon
   );
 }
 
-function lineItemTotalPrice(item: ShopwareUcpLineItem, unitPrice: Money): Money {
+function lineItemTotalPrice(item: UcpLineItem, unitPrice: Money): Money {
   return (
     item.total_price ??
     item.totalPrice ??
@@ -145,6 +140,6 @@ function totalByType(
   return normalizeRequiredMoney(total.amount, total.currency ?? fallbackCurrency);
 }
 
-function normalizeRequiredMoney(amount: number, currency: string): ShopwareUcpMoney {
+function normalizeRequiredMoney(amount: number, currency: string): UcpMoney {
   return { amount, currency };
 }

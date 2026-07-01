@@ -18,18 +18,18 @@ import {
   normalizeUcpProduct,
   normalizeUcpProductDetails,
   readUcpContinueUrl,
-} from './normalize-shopware-ucp.js';
-import type { ShopwareUcpClient } from './shopware-ucp-client.js';
-import type { ShopwareUcpCart, ShopwareUcpLineItem } from './shopware-ucp-types.js';
+} from './normalize-ucp.js';
+import type { UcpClient } from './ucp-client.js';
+import type { UcpCart, UcpLineItem } from './ucp-types.js';
 
-export interface ShopwareUcpAdapterOptions {
-  readonly client: ShopwareUcpClient;
+export interface UcpAdapterOptions {
+  readonly client: UcpClient;
 }
 
-export class ShopwareUcpAdapter implements CommerceAdapter {
-  readonly #client: ShopwareUcpClient;
+export class UcpAdapter implements CommerceAdapter {
+  readonly #client: UcpClient;
 
-  constructor(options: ShopwareUcpAdapterOptions) {
+  constructor(options: UcpAdapterOptions) {
     this.#client = options.client;
   }
 
@@ -40,10 +40,10 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
 
       return {
         products: result.products.map(normalizeUcpProduct),
-        dataSource: 'shopware_ucp',
+        dataSource: 'ucp',
       };
     } catch (error) {
-      throw wrapShopwareUcpError('Shopware UCP product search failed', error);
+      throw wrapUcpError('UCP product search failed', error);
     }
   }
 
@@ -54,10 +54,10 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
 
       return {
         product: normalizeUcpProductDetails(product),
-        dataSource: 'shopware_ucp',
+        dataSource: 'ucp',
       };
     } catch (error) {
-      throw wrapShopwareUcpError('Shopware UCP product detail lookup failed', error);
+      throw wrapUcpError('UCP product detail lookup failed', error);
     }
   }
 
@@ -68,10 +68,10 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
 
       return {
         cart: normalizeUcpCart(cart),
-        dataSource: 'shopware_ucp',
+        dataSource: 'ucp',
       };
     } catch (error) {
-      throw wrapShopwareUcpError('Shopware UCP cart creation failed', error);
+      throw wrapUcpError('UCP cart creation failed', error);
     }
   }
 
@@ -82,10 +82,10 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
 
       return {
         cart: normalizeUcpCart(cart),
-        dataSource: 'shopware_ucp',
+        dataSource: 'ucp',
       };
     } catch (error) {
-      throw wrapShopwareUcpError('Shopware UCP cart update failed', error);
+      throw wrapUcpError('UCP cart update failed', error);
     }
   }
 
@@ -96,10 +96,10 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
 
       return {
         cart: normalizeUcpCart(cart),
-        dataSource: 'shopware_ucp',
+        dataSource: 'ucp',
       };
     } catch (error) {
-      throw wrapShopwareUcpError('Shopware UCP cart summary lookup failed', error);
+      throw wrapUcpError('UCP cart summary lookup failed', error);
     }
   }
 
@@ -121,7 +121,7 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
           readUcpContinueUrl(checkout) ?? this.#client.getEmbeddedCheckoutUrl(checkout.id),
       };
     } catch (error) {
-      throw wrapShopwareUcpError('Shopware UCP checkout handoff failed', error);
+      throw wrapUcpError('UCP checkout handoff failed', error);
     }
   }
 
@@ -142,12 +142,12 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
         status: 'completed',
       };
     } catch (error) {
-      throw wrapShopwareUcpError('Shopware UCP checkout completion failed', error);
+      throw wrapUcpError('UCP checkout completion failed', error);
     }
   }
 }
 
-function wrapShopwareUcpError(message: string, error: unknown): Error {
+function wrapUcpError(message: string, error: unknown): Error {
   if (error instanceof Error && error.message.length > 0) {
     return new Error(`${message}: ${error.message}`, { cause: error });
   }
@@ -155,27 +155,25 @@ function wrapShopwareUcpError(message: string, error: unknown): Error {
   return new Error(message, { cause: error });
 }
 
-function readCheckoutLineItems(checkout: ShopwareUcpCart): readonly CartItemInput[] {
+function readCheckoutLineItems(checkout: UcpCart): readonly CartItemInput[] {
   const lineItems = checkout.lineItems ?? checkout.line_items ?? [];
 
   if (lineItems.length === 0) {
-    throw new Error(
-      'Shopware UCP checkout completion failed because the checkout has no line items',
-    );
+    throw new Error('UCP checkout completion failed because the checkout has no line items');
   }
 
   return lineItems.map(readCheckoutLineItem);
 }
 
-function readCheckoutLineItem(lineItem: ShopwareUcpLineItem): CartItemInput {
+function readCheckoutLineItem(lineItem: UcpLineItem): CartItemInput {
   const productId = lineItem.item?.id;
 
   if (!productId) {
-    throw new Error('Shopware UCP checkout line item is missing item.id');
+    throw new Error('UCP checkout line item is missing item.id');
   }
 
   if (!Number.isInteger(lineItem.quantity) || lineItem.quantity <= 0) {
-    throw new Error(`Shopware UCP checkout line item ${productId} has an invalid quantity`);
+    throw new Error(`UCP checkout line item ${productId} has an invalid quantity`);
   }
 
   return {

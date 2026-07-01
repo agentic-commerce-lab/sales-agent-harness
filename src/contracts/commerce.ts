@@ -108,17 +108,17 @@ export interface CompleteCheckoutInput {
 
 export interface ProductSearchResult {
   readonly products: readonly ProductSummary[];
-  readonly dataSource: 'shopware_store_api' | 'shopware_ucp';
+  readonly dataSource: 'shopware_store_api' | 'ucp';
 }
 
 export interface ProductDetailsResult {
   readonly product: ProductDetails;
-  readonly dataSource: 'shopware_store_api' | 'shopware_ucp';
+  readonly dataSource: 'shopware_store_api' | 'ucp';
 }
 
 export interface CartResult {
   readonly cart: CartSummary;
-  readonly dataSource: 'shopware_store_api' | 'shopware_ucp';
+  readonly dataSource: 'shopware_store_api' | 'ucp';
 }
 
 export interface CheckoutHandoffResult {
