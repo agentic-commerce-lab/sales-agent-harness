@@ -23,6 +23,11 @@ const cartItemSchema = z.object({
   quantity: z.number().int().positive(),
 });
 
+const isoCountryCodeSchema = z
+  .string()
+  .regex(/^[A-Za-z]{2}$/, 'Use a two-letter ISO 3166-1 alpha-2 country code.')
+  .transform((value) => value.toUpperCase());
+
 const buyerSchema = z.object({
   email: z.email(),
   firstName: z.string().min(1).optional(),
@@ -36,7 +41,7 @@ const fulfillmentSchema = z.object({
     street: z.string().min(1),
     zipcode: z.string().min(1),
     city: z.string().min(1),
-    countryCode: z.string().min(2),
+    countryCode: isoCountryCodeSchema,
   }),
 });
 

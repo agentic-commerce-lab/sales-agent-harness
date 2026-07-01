@@ -5,6 +5,11 @@ import type {
   HarnessToolExecutor,
 } from './executable-tool-registry.js';
 
+const isoCountryCodeSchema = z
+  .string()
+  .regex(/^[A-Za-z]{2}$/, 'Use a two-letter ISO 3166-1 alpha-2 country code.')
+  .transform((value) => value.toUpperCase());
+
 export function createCreateCartTool(
   harness: HarnessToolExecutor,
 ): ExecutableHarnessToolDefinition {
@@ -101,7 +106,7 @@ export function createCompleteCheckoutTool(
         street: z.string().min(1),
         zipcode: z.string().min(1),
         city: z.string().min(1),
-        countryCode: z.string().min(2),
+        countryCode: isoCountryCodeSchema,
       }),
     }),
   });

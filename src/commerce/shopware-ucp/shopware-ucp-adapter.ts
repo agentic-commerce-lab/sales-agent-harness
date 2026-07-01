@@ -41,7 +41,7 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
         dataSource: 'shopware_ucp',
       };
     } catch (error) {
-      throw new Error('Shopware UCP product search failed', { cause: error });
+      throw wrapShopwareUcpError('Shopware UCP product search failed', error);
     }
   }
 
@@ -55,7 +55,7 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
         dataSource: 'shopware_ucp',
       };
     } catch (error) {
-      throw new Error('Shopware UCP product detail lookup failed', { cause: error });
+      throw wrapShopwareUcpError('Shopware UCP product detail lookup failed', error);
     }
   }
 
@@ -69,7 +69,7 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
         dataSource: 'shopware_ucp',
       };
     } catch (error) {
-      throw new Error('Shopware UCP cart creation failed', { cause: error });
+      throw wrapShopwareUcpError('Shopware UCP cart creation failed', error);
     }
   }
 
@@ -83,7 +83,7 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
         dataSource: 'shopware_ucp',
       };
     } catch (error) {
-      throw new Error('Shopware UCP cart update failed', { cause: error });
+      throw wrapShopwareUcpError('Shopware UCP cart update failed', error);
     }
   }
 
@@ -97,7 +97,7 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
         dataSource: 'shopware_ucp',
       };
     } catch (error) {
-      throw new Error('Shopware UCP cart summary lookup failed', { cause: error });
+      throw wrapShopwareUcpError('Shopware UCP cart summary lookup failed', error);
     }
   }
 
@@ -119,7 +119,7 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
           readUcpContinueUrl(checkout) ?? this.#client.getEmbeddedCheckoutUrl(checkout.id),
       };
     } catch (error) {
-      throw new Error('Shopware UCP checkout handoff failed', { cause: error });
+      throw wrapShopwareUcpError('Shopware UCP checkout handoff failed', error);
     }
   }
 
@@ -138,7 +138,15 @@ export class ShopwareUcpAdapter implements CommerceAdapter {
         status: 'completed',
       };
     } catch (error) {
-      throw new Error('Shopware UCP checkout completion failed', { cause: error });
+      throw wrapShopwareUcpError('Shopware UCP checkout completion failed', error);
     }
   }
+}
+
+function wrapShopwareUcpError(message: string, error: unknown): Error {
+  if (error instanceof Error && error.message.length > 0) {
+    return new Error(`${message}: ${error.message}`, { cause: error });
+  }
+
+  return new Error(message, { cause: error });
 }

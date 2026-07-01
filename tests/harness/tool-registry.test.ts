@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { AgentHarnessConfig } from '../../src/contracts/config.js';
+import type { HarnessToolExecutor } from '../../src/harness/executable-tool-registry.js';
 import {
   createExecutableToolRegistry,
   createToolRegistry,
@@ -46,27 +47,7 @@ describe('createExecutableToolRegistry', () => {
       enabledCapabilities: ['searchProducts', 'createCart', 'completeCheckout'],
       policies: { ...createConfig().policies, allowCheckoutCompletion: true },
     } satisfies AgentHarnessConfig;
-    const registry = createExecutableToolRegistry(config, {
-      searchProducts: async (input) => {
-        calls.push(input);
-        return { status: 'ok', value: { products: [] } };
-      },
-      createCart: async () => ({ status: 'blocked', policyDecision: createPolicyDecision() }),
-      getProductDetails: async () => ({
-        status: 'blocked',
-        policyDecision: createPolicyDecision(),
-      }),
-      getCartSummary: async () => ({ status: 'blocked', policyDecision: createPolicyDecision() }),
-      prepareCheckoutHandoff: async () => ({
-        status: 'blocked',
-        policyDecision: createPolicyDecision(),
-      }),
-      completeCheckout: async () => ({
-        status: 'ok',
-        value: { status: 'completed', summary: { cartId: 'checkout-1' }, orderId: 'order-1' },
-      }),
-      updateCart: async () => ({ status: 'blocked', policyDecision: createPolicyDecision() }),
-    });
+    const registry = createExecutableToolRegistry(config, createHarnessExecutor(calls));
     const searchProducts = registry.find((tool) => tool.name === 'searchProducts');
     const completeCheckout = registry.find((tool) => tool.name === 'completeCheckout');
 
@@ -112,6 +93,25 @@ describe('createExecutableToolRegistry', () => {
       value: { status: 'completed', summary: { cartId: 'checkout-1' }, orderId: 'order-1' },
     });
   });
+
+  test('requires checkout shipping countries as ISO alpha-2 codes', () => {
+    const registry = createExecutableToolRegistry(
+      createCheckoutCompletionConfig(),
+      createHarnessExecutor([]),
+    );
+    const completeCheckout = registry.find((tool) => tool.name === 'completeCheckout');
+
+    expect(
+      completeCheckout?.schema.safeParse(createCheckoutInput({ countryCode: 'germany' })).success,
+    ).toBe(false);
+
+    const lowerCaseCountryCodeResult = completeCheckout?.schema.safeParse(
+      createCheckoutInput({ countryCode: 'de' }),
+    );
+
+    expect(lowerCaseCountryCodeResult?.success).toBe(true);
+    expect(JSON.stringify(lowerCaseCountryCodeResult)).toContain('"countryCode":"DE"');
+  });
 });
 
 function createConfig(): AgentHarnessConfig {
@@ -139,6 +139,38 @@ function createConfig(): AgentHarnessConfig {
   };
 }
 
+function createCheckoutCompletionConfig(): AgentHarnessConfig {
+  return {
+    ...createConfig(),
+    enabledCapabilities: ['completeCheckout'],
+    policies: { ...createConfig().policies, allowCheckoutCompletion: true },
+  };
+}
+
+function createHarnessExecutor(calls: unknown[]): HarnessToolExecutor {
+  return {
+    searchProducts: async (input) => {
+      calls.push(input);
+      return { status: 'ok', value: { products: [] } };
+    },
+    createCart: async () => ({ status: 'blocked', policyDecision: createPolicyDecision() }),
+    getProductDetails: async () => ({
+      status: 'blocked',
+      policyDecision: createPolicyDecision(),
+    }),
+    getCartSummary: async () => ({ status: 'blocked', policyDecision: createPolicyDecision() }),
+    prepareCheckoutHandoff: async () => ({
+      status: 'blocked',
+      policyDecision: createPolicyDecision(),
+    }),
+    completeCheckout: async () => ({
+      status: 'ok',
+      value: { status: 'completed', summary: { cartId: 'checkout-1' }, orderId: 'order-1' },
+    }),
+    updateCart: async () => ({ status: 'blocked', policyDecision: createPolicyDecision() }),
+  };
+}
+
 function createBuyer() {
   return {
     email: 'buyer@example.test',
@@ -156,6 +188,21 @@ function createFulfillment() {
       zipcode: '12345',
       city: 'Berlin',
       countryCode: 'DE',
+    },
+  };
+}
+
+function createCheckoutInput(options: { readonly countryCode: string }) {
+  return {
+    checkoutId: 'checkout-1',
+    explicitBuyerConfirmation: true,
+    buyer: createBuyer(),
+    fulfillment: {
+      ...createFulfillment(),
+      shippingAddress: {
+        ...createFulfillment().shippingAddress,
+        countryCode: options.countryCode,
+      },
     },
   };
 }

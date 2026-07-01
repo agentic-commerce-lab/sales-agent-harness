@@ -173,6 +173,31 @@ describe('ShopwareUcpAdapter', () => {
     expect(completed.orderId).toBe('order-1');
     expect(JSON.stringify(completed)).not.toContain('secret-context-token');
   });
+
+  test('includes UCP checkout failure details in adapter errors', async () => {
+    const adapter = new ShopwareUcpAdapter({
+      client: {
+        ...createAdapterClient(),
+        completeCheckout: async () => {
+          throw new Error(
+            'Shopware UCP request failed with status 422: {"errors":["country_code is invalid"]}',
+          );
+        },
+      },
+    });
+
+    const promise = adapter.completeCheckout({
+      checkoutId: 'checkout-1',
+      buyer: createBuyer(),
+      fulfillment: createFulfillment(),
+    });
+
+    await expectRejectsWith(promise, 'Shopware UCP checkout completion failed');
+    await expectRejectsWith(
+      promise,
+      'Shopware UCP request failed with status 422: {"errors":["country_code is invalid"]}',
+    );
+  });
 });
 
 describe('ShopwareUcpAdapter total normalization', () => {
