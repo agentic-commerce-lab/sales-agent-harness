@@ -21,6 +21,7 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
   readonly #fetch: typeof fetch;
   readonly #agentProfileUrl: string;
   readonly #signer: UcpHttpSigner | undefined;
+  #endpointPromise: Promise<string> | undefined;
 
   constructor(config: ShopwareEnvironmentConfig, fetchImplementation: typeof fetch = fetch) {
     this.#baseUrl = config.baseUrl.replace(/\/$/, '');
@@ -39,7 +40,8 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     readonly query: string;
     readonly limit?: number;
   }): Promise<ShopwareUcpProductSearchResponse> {
-    const payload = await this.#requestJson('POST', '/ucp/v1/catalog/search', {
+    const ep = await this.#discoverEndpoint();
+    const payload = await this.#requestJson('POST', `${ep}/catalog/search`, {
       query: input.query,
       limit: input.limit,
     });
@@ -49,7 +51,8 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
 
   // fallow-ignore-next-line unused-class-member
   async getProductDetails(input: { readonly productId: string }): Promise<ShopwareUcpProduct> {
-    const payload = await this.#requestJson('POST', '/ucp/v1/catalog/lookup', {
+    const ep = await this.#discoverEndpoint();
+    const payload = await this.#requestJson('POST', `${ep}/catalog/lookup`, {
       ids: [input.productId],
     });
     const products = parseProductSearchResponse(payload).products;
@@ -64,7 +67,8 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
 
   // fallow-ignore-next-line unused-class-member
   async createCart(input: { readonly items: readonly CartItemInput[] }): Promise<ShopwareUcpCart> {
-    const payload = await this.#requestJson('POST', '/ucp/v1/carts', {
+    const ep = await this.#discoverEndpoint();
+    const payload = await this.#requestJson('POST', `${ep}/carts`, {
       line_items: input.items.map(toUcpLineItemPayload),
     });
 
@@ -76,7 +80,8 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     readonly cartId: string;
     readonly items: readonly CartItemInput[];
   }): Promise<ShopwareUcpCart> {
-    const payload = await this.#requestJson('PATCH', `/ucp/v1/carts/${input.cartId}`, {
+    const ep = await this.#discoverEndpoint();
+    const payload = await this.#requestJson('PATCH', `${ep}/carts/${input.cartId}`, {
       id: input.cartId,
       line_items: input.items.map(toUcpLineItemPayload),
     });
@@ -86,7 +91,8 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
 
   // fallow-ignore-next-line unused-class-member
   async getCart(input: { readonly cartId: string }): Promise<ShopwareUcpCart> {
-    const payload = await this.#requestJson('GET', `/ucp/v1/carts/${input.cartId}`);
+    const ep = await this.#discoverEndpoint();
+    const payload = await this.#requestJson('GET', `${ep}/carts/${input.cartId}`);
 
     return parseCart(payload);
   }
@@ -95,7 +101,8 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     readonly cartId?: string | undefined;
     readonly lineItems: readonly CartItemInput[];
   }): Promise<ShopwareUcpCart> {
-    const payload = await this.#requestJson('POST', '/ucp/v1/checkout-sessions', {
+    const ep = await this.#discoverEndpoint();
+    const payload = await this.#requestJson('POST', `${ep}/checkout-sessions`, {
       ...(input.cartId ? { cart_id: input.cartId } : {}),
       line_items: input.lineItems.map(toUcpLineItemPayload),
     });
@@ -104,9 +111,10 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
   }
 
   async getCheckout(input: { readonly checkoutId: string }): Promise<ShopwareUcpCart> {
+    const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson(
       'GET',
-      `/ucp/v1/checkout-sessions/${encodeURIComponent(input.checkoutId)}`,
+      `${ep}/checkout-sessions/${encodeURIComponent(input.checkoutId)}`,
     );
 
     return parseCart(payload);
@@ -118,9 +126,10 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     readonly buyer: BuyerInput;
     readonly fulfillment: FulfillmentInput;
   }): Promise<ShopwareUcpCart> {
+    const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson(
       'PATCH',
-      `/ucp/v1/checkout-sessions/${encodeURIComponent(input.checkoutId)}`,
+      `${ep}/checkout-sessions/${encodeURIComponent(input.checkoutId)}`,
       {
         id: input.checkoutId,
         line_items: input.lineItems.map(toUcpLineItemPayload),
@@ -133,9 +142,10 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
   }
 
   async completeCheckout(input: { readonly checkoutId: string }): Promise<ShopwareUcpCart> {
+    const ep = await this.#discoverEndpoint();
     const payload = await this.#requestJson(
       'POST',
-      `/ucp/v1/checkout-sessions/${encodeURIComponent(input.checkoutId)}/complete`,
+      `${ep}/checkout-sessions/${encodeURIComponent(input.checkoutId)}/complete`,
       { payment: { instruments: [] } },
     );
 
@@ -144,11 +154,37 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
 
   // fallow-ignore-next-line unused-class-member
   getEmbeddedCheckoutUrl(checkoutId: string): string {
+    // Shopware-specific fallback URL; used only when the vendor response lacks continue_url
     return `${this.#baseUrl}/ucp/embedded/checkout/${encodeURIComponent(checkoutId)}`;
   }
 
-  async #requestJson(method: string, path: string, body?: unknown): Promise<unknown> {
-    const url = new URL(`${this.#baseUrl}${path}`);
+  async #discoverEndpoint(): Promise<string> {
+    this.#endpointPromise ??= this.#fetchEndpoint();
+    return this.#endpointPromise;
+  }
+
+  async #fetchEndpoint(): Promise<string> {
+    const discoveryUrl = new URL('/.well-known/ucp', this.#baseUrl);
+    let response: Response;
+    try {
+      response = await this.#fetch(discoveryUrl);
+    } catch (cause) {
+      throw new Error(
+        `UCP endpoint discovery failed: network error fetching ${discoveryUrl.toString()}`,
+        { cause },
+      );
+    }
+    if (!response.ok) {
+      throw new Error(
+        `UCP endpoint discovery failed: ${discoveryUrl.toString()} returned ${response.status}`,
+      );
+    }
+    const profile = await response.json();
+    return parseShoppingServiceEndpoint(profile);
+  }
+
+  async #requestJson(method: string, url: string, body?: unknown): Promise<unknown> {
+    const parsedUrl = new URL(url);
     const bodyString = body === undefined ? undefined : JSON.stringify(body);
     const headers = new Map<string, string>([
       ['accept', 'application/json'],
@@ -158,11 +194,11 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
     ]);
     const signatureHeaders = this.#signer?.sign({
       method,
-      url,
+      url: parsedUrl,
       headers,
       body: bodyString,
     });
-    const response = await this.#fetch(url, {
+    const response = await this.#fetch(parsedUrl, {
       method,
       headers: Object.fromEntries([
         ...headers.entries(),
@@ -187,6 +223,28 @@ export class FetchShopwareUcpClient implements ShopwareUcpClient {
 
     return response.json();
   }
+}
+
+function parseShoppingServiceEndpoint(profile: unknown): string {
+  const root = readRecord(profile);
+  const ucp = readRecord(root.ucp);
+  const services = readRecord(ucp.services);
+  const shopping = services['dev.ucp.shopping'];
+
+  if (!shopping) {
+    throw new Error('UCP profile missing dev.ucp.shopping service');
+  }
+
+  // Handle both object form (spec) and array form (our own emitted profile uses arrays)
+  const service: unknown = Array.isArray(shopping) ? (shopping as readonly unknown[])[0] : shopping;
+  const serviceRecord = readRecord(service);
+  const endpoint = serviceRecord.endpoint;
+
+  if (typeof endpoint !== 'string' || !endpoint) {
+    throw new Error('UCP profile missing dev.ucp.shopping REST endpoint');
+  }
+
+  return endpoint.replace(/\/$/, '');
 }
 
 async function readErrorBody(response: Response): Promise<string> {
@@ -357,12 +415,7 @@ function parsePriceRange(payload: unknown) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     return undefined;
   }
-
-  const record = readRecord(payload);
-
-  return {
-    min: parseMoney(record.min),
-  };
+  return { min: parseMoney(readRecord(payload).min) };
 }
 
 function parseLinks(payload: unknown) {
@@ -400,25 +453,27 @@ function parseTotals(payload: unknown) {
 
     const record = readRecord(item);
     const type = readOptionalString(record.type);
-    if (!type || typeof record.amount !== 'number') {
+    if (!type) {
       return [];
     }
 
-    const currency = readOptionalString(record.currency);
-    return [
-      {
-        type,
-        amount: record.amount,
-        ...(currency ? { currency } : {}),
-      },
-    ];
+    // UCP spec form: amount is an object { amount, currency }
+    if (record.amount && typeof record.amount === 'object' && !Array.isArray(record.amount)) {
+      const inner = readRecord(record.amount);
+      if (typeof inner.amount === 'number') {
+        return [{ type, amount: inner.amount, currency: readOptionalString(inner.currency) }];
+      }
+    }
+
+    // Shopware flat form: amount is a plain number
+    if (typeof record.amount === 'number') {
+      return [{ type, amount: record.amount, currency: readOptionalString(record.currency) }];
+    }
+
+    return [];
   });
 }
 
 function parseStringArray(payload: unknown): readonly string[] | undefined {
-  if (!Array.isArray(payload)) {
-    return undefined;
-  }
-
-  return payload.filter((value) => typeof value === 'string');
+  return Array.isArray(payload) ? payload.filter((value) => typeof value === 'string') : undefined;
 }

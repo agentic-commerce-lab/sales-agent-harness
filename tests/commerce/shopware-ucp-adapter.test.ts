@@ -7,6 +7,10 @@ import {
 } from '../../src/commerce/shopware-ucp/shopware-ucp-client.js';
 import { createUcpPlatformProfile } from '../../src/commerce/shopware-ucp/ucp-platform-profile.js';
 
+const minimalProfile = {
+  ucp: { services: { 'dev.ucp.shopping': { endpoint: 'https://shop.example.test/ucp/v1' } } },
+};
+
 const testPrivateJwk = {
   kty: 'EC',
   crv: 'P-256',
@@ -40,6 +44,93 @@ describe('FetchShopwareUcpClient', () => {
   });
 });
 
+describe('FetchShopwareUcpClient endpoint discovery', () => {
+  test('caches the discovered endpoint across multiple API calls', async () => {
+    const discoveryCalls: string[] = [];
+    const fetchImplementation = Object.assign(
+      async (url: string | URL | Request) => {
+        const urlStr = requestUrl(url);
+        if (urlStr.endsWith('/.well-known/ucp')) {
+          discoveryCalls.push(urlStr);
+          return new Response(JSON.stringify(minimalProfile), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify(createEmptyCheckout()), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      },
+      { preconnect: () => {} },
+    ) satisfies typeof fetch;
+
+    const client = new FetchShopwareUcpClient(createUcpConfig(), fetchImplementation);
+    await client.createCheckout({ lineItems: [{ productId: 'p1', quantity: 1 }] });
+    await client.completeCheckout({ checkoutId: 'checkout-1' });
+
+    expect(discoveryCalls).toHaveLength(1);
+  });
+
+  test('throws a descriptive error when discovery returns 404', async () => {
+    const client = new FetchShopwareUcpClient(
+      createUcpConfig(),
+      Object.assign(async () => new Response('Not Found', { status: 404 }), {
+        preconnect: () => {},
+      }) satisfies typeof fetch,
+    );
+
+    const rejected = client.createCheckout({ lineItems: [] });
+    await expectRejectsWith(rejected, 'UCP endpoint discovery failed');
+    await expectRejectsWith(rejected, 'returned 404');
+  });
+
+  test('throws a descriptive error when the profile is missing dev.ucp.shopping', async () => {
+    const client = new FetchShopwareUcpClient(
+      createUcpConfig(),
+      Object.assign(
+        async () =>
+          new Response(JSON.stringify({ ucp: { services: {} } }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        { preconnect: () => {} },
+      ) satisfies typeof fetch,
+    );
+
+    await expectRejectsWith(
+      client.createCheckout({ lineItems: [] }),
+      'UCP profile missing dev.ucp.shopping',
+    );
+  });
+
+  test('strips trailing slash from the discovered endpoint', async () => {
+    const { client, requests } = createRecordingUcpClient({
+      ucp: {
+        services: { 'dev.ucp.shopping': { endpoint: 'https://shop.example.test/ucp/v1/' } },
+      },
+    });
+
+    await client.createCheckout({ lineItems: [] });
+
+    expect(requests[0]?.url).toBe('https://shop.example.test/ucp/v1/checkout-sessions');
+  });
+
+  test('handles profile where services entry is an array', async () => {
+    const { client, requests } = createRecordingUcpClient({
+      ucp: {
+        services: {
+          'dev.ucp.shopping': [{ endpoint: 'https://shop.example.test/ucp/v1' }],
+        },
+      },
+    });
+
+    await client.createCheckout({ lineItems: [] });
+
+    expect(requests[0]?.url).toBe('https://shop.example.test/ucp/v1/checkout-sessions');
+  });
+});
+
 describe('FetchShopwareUcpClient errors', () => {
   test('includes UCP error response details in failed requests', async () => {
     const client = new FetchShopwareUcpClient(
@@ -50,13 +141,18 @@ describe('FetchShopwareUcpClient errors', () => {
         ucpAgentProfileUrl: 'https://platform.example/.well-known/ucp',
       },
       Object.assign(
-        async () =>
-          new Response(
-            JSON.stringify({
-              errors: ['$.checkout_session.buyer.email is required'],
-            }),
+        async (url: string | URL | Request) => {
+          if (requestUrl(url).endsWith('/.well-known/ucp')) {
+            return new Response(JSON.stringify(minimalProfile), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            });
+          }
+          return new Response(
+            JSON.stringify({ errors: ['$.checkout_session.buyer.email is required'] }),
             { status: 422, headers: { 'content-type': 'application/json' } },
-          ),
+          );
+        },
         { preconnect: () => {} },
       ) satisfies typeof fetch,
     );
@@ -76,18 +172,22 @@ describe('FetchShopwareUcpClient signing', () => {
   test('signs UCP REST requests with RFC 9421 headers when a platform key is configured', async () => {
     const requests: { readonly headers: Headers; readonly body: string }[] = [];
     const fetchImplementation = Object.assign(
-      async (_url: string | URL | Request, init?: RequestInit) => {
+      async (url: string | URL | Request, init?: RequestInit) => {
+        if (requestUrl(url).endsWith('/.well-known/ucp')) {
+          return new Response(JSON.stringify(minimalProfile), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
         requests.push({
           headers: new Headers(init?.headers),
           body: requestBody(init?.body),
         });
 
-        return new Response(
-          JSON.stringify({
-            products: [],
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        );
+        return new Response(JSON.stringify({ products: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
       },
       { preconnect: () => {} },
     ) satisfies typeof fetch;
@@ -288,13 +388,19 @@ interface RecordedRequest {
   readonly body: unknown;
 }
 
-function createRecordingUcpClient(): {
+function createRecordingUcpClient(profile: unknown = minimalProfile): {
   readonly client: FetchShopwareUcpClient;
   readonly requests: readonly RecordedRequest[];
 } {
   const requests: RecordedRequest[] = [];
   const fetchImplementation = Object.assign(
     async (url: string | URL | Request, init?: RequestInit) => {
+      if (requestUrl(url).endsWith('/.well-known/ucp')) {
+        return new Response(JSON.stringify(profile), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
       requests.push({
         url: requestUrl(url),
         headers: new Headers(init?.headers),

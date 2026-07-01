@@ -108,6 +108,19 @@ test('createRunnableSalesAgentHarnessApp can use Agentic Commerce UCP checkout h
 const ucpFetch = Object.assign(
   async (url: string | URL | Request) => {
     const path = new URL(requestUrl(url)).pathname;
+    if (path === '/.well-known/ucp') {
+      return new Response(
+        JSON.stringify({
+          ucp: {
+            services: {
+              'dev.ucp.shopping': { endpoint: 'https://shop.example.test/ucp/v1' },
+            },
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+
     if (path === '/ucp/v1/carts/cart') {
       return new Response(JSON.stringify(createUcpCart()), {
         status: 200,

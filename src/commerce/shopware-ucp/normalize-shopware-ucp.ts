@@ -37,8 +37,12 @@ export function normalizeUcpProductDetails(product: ShopwareUcpProduct): Product
 }
 
 export function normalizeUcpCart(cart: ShopwareUcpCart): CartSummary {
-  const currency = cart.currency ?? cart.moneySummary?.total?.currency ?? defaultCurrency;
-  const lineItems = cart.lineItems ?? cart.line_items ?? [];
+  const currency =
+    cart.currency ??
+    cart.money_summary?.total?.currency ??
+    cart.moneySummary?.total?.currency ??
+    defaultCurrency;
+  const lineItems = cart.line_items ?? cart.lineItems ?? [];
   const money = normalizeCartMoney(cart, currency);
 
   return {
@@ -51,7 +55,7 @@ export function normalizeUcpCart(cart: ShopwareUcpCart): CartSummary {
 }
 
 export function readUcpContinueUrl(checkout: ShopwareUcpCart): string | undefined {
-  const direct = checkout.continueUrl ?? checkout.continue_url;
+  const direct = checkout.continue_url ?? checkout.continueUrl;
   if (direct) {
     return direct;
   }
@@ -90,7 +94,7 @@ function normalizeLineItem(item: ShopwareUcpLineItem, cartCurrency: string): Car
 }
 
 function normalizeCartMoney(cart: ShopwareUcpCart, currency: string) {
-  const summary = cart.moneySummary ?? cart.money_summary;
+  const summary = cart.money_summary ?? cart.moneySummary;
 
   return {
     subtotal:
@@ -108,14 +112,14 @@ function lineItemUnitPrice(item: ShopwareUcpLineItem, cartCurrency: string): Mon
   const productPrice = normalizeProductPrice(item.item ?? { id: item.id ?? 'unknown-product' });
 
   return (
-    item.unitPrice ?? item.unit_price ?? productPrice ?? normalizeRequiredMoney(0, cartCurrency)
+    item.unit_price ?? item.unitPrice ?? productPrice ?? normalizeRequiredMoney(0, cartCurrency)
   );
 }
 
 function lineItemTotalPrice(item: ShopwareUcpLineItem, unitPrice: Money): Money {
   return (
-    item.totalPrice ??
     item.total_price ??
+    item.totalPrice ??
     totalByType(item.totals, 'total', unitPrice.currency) ??
     totalByType(item.totals, 'subtotal', unitPrice.currency) ??
     normalizeRequiredMoney(unitPrice.amount * item.quantity, unitPrice.currency)
