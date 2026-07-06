@@ -37,9 +37,14 @@ export interface ShopwareLineItem {
   readonly price?: ShopwarePrice | undefined;
 }
 
+export interface ShopwareDelivery {
+  readonly shippingCosts?: ShopwarePrice | undefined;
+}
+
 export interface ShopwareCart {
   readonly token?: string | undefined;
   readonly lineItems?: readonly ShopwareLineItem[];
+  readonly deliveries?: readonly ShopwareDelivery[];
   readonly price?:
     | {
         readonly positionPrice?: number | undefined;

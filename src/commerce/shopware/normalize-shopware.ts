@@ -47,14 +47,30 @@ export function normalizeShopwareProductDetails(
 export function normalizeShopwareCart(cart: ShopwareCart): CartSummary {
   const currency = cart.price?.currency ?? defaultCurrency;
   const items = cart.lineItems?.map((item) => normalizeLineItem(item, currency)) ?? [];
+  const shipping = normalizeShippingCosts(cart, currency);
 
   return {
     cartId: 'cart',
     items,
     subtotal: normalizeRequiredPrice(cart.price?.positionPrice ?? 0, currency),
+    ...(shipping ? { shipping } : {}),
     total: normalizeRequiredPrice(cart.price?.totalPrice ?? 0, currency),
     currency,
   };
+}
+
+function normalizeShippingCosts(cart: ShopwareCart, currency: string): Money | undefined {
+  const shippingCosts = cart.deliveries?.flatMap((delivery) =>
+    delivery.shippingCosts ? [delivery.shippingCosts] : [],
+  );
+
+  if (!shippingCosts || shippingCosts.length === 0) {
+    return undefined;
+  }
+
+  const amount = shippingCosts.reduce((sum, costs) => sum + costs.totalPrice, 0);
+
+  return normalizeRequiredPrice(amount, shippingCosts[0]?.currency ?? currency);
 }
 
 function normalizeLineItem(

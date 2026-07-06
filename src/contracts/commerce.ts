@@ -39,6 +39,7 @@ export interface CartSummary {
   readonly cartId: string;
   readonly items: readonly CartLineItem[];
   readonly subtotal: Money;
+  readonly shipping?: Money;
   readonly total: Money;
   readonly currency: string;
 }

@@ -239,7 +239,69 @@ describe('createUcpPlatformProfile', () => {
   });
 });
 
+describe('FetchUcpClient product parsing', () => {
+  test('keeps attributes, variants, and delivery estimates from catalog lookups', async () => {
+    const fetchImplementation = Object.assign(
+      async (url: string | URL | Request) => {
+        if (requestUrl(url).endsWith('/.well-known/ucp')) {
+          return new Response(JSON.stringify(minimalProfile), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        return new Response(
+          JSON.stringify({
+            products: [
+              {
+                id: 'product-1',
+                title: 'Blue Jacket',
+                price: { amount: 119, currency: 'EUR' },
+                attributes: { color: 'blue', weight_kg: 1.2, waterproof: true, ignored: null },
+                variants: [{ id: 'product-1-l', title: 'Blue Jacket L' }],
+                delivery_estimate: '2-3 days',
+              },
+            ],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      },
+      { preconnect: () => {} },
+    ) satisfies typeof fetch;
+    const client = new FetchUcpClient(createUcpConfig(), fetchImplementation);
+
+    const product = await client.getProductDetails({ productId: 'product-1' });
+
+    expect(product.attributes).toEqual({ color: 'blue', weight_kg: '1.2', waterproof: 'true' });
+    expect(product.variants).toEqual([{ id: 'product-1-l', title: 'Blue Jacket L' }]);
+    expect(product.delivery_estimate).toBe('2-3 days');
+  });
+});
+
 describe('UcpAdapter', () => {
+  test('normalizes product details including attributes, variants, and delivery estimate', async () => {
+    const adapter = new UcpAdapter({
+      client: {
+        ...createAdapterClient(),
+        getProductDetails: async () => ({
+          id: 'product-1',
+          title: 'Blue Jacket',
+          price: { amount: 119, currency: 'EUR' },
+          attributes: { color: 'blue' },
+          variants: [{ id: 'product-1-l', title: 'Blue Jacket L' }],
+          delivery_estimate: '2-3 days',
+        }),
+      },
+    });
+
+    const result = await adapter.getProductDetails({ productId: 'product-1' });
+
+    expect(result.product.attributes).toEqual({ color: 'blue' });
+    expect(result.product.variants).toEqual([
+      { id: 'product-1-l', label: 'Blue Jacket L', categories: [] },
+    ]);
+    expect(result.product.deliveryEstimate).toBe('2-3 days');
+  });
+
   test('creates checkout handoff from a UCP checkout continue URL', async () => {
     const adapter = new UcpAdapter({ client: createAdapterClient() });
 
@@ -330,7 +392,8 @@ describe('UcpAdapter total normalization', () => {
 
     const handoff = await adapter.prepareCheckoutHandoff({ cartId: 'cart-1' });
 
-    expect(handoff.summary.total).toEqual({ amount: 2000, currency: 'EUR' });
+    expect(handoff.summary.total).toEqual({ amount: 2490, currency: 'EUR' });
+    expect(handoff.summary.shipping).toEqual({ amount: 490, currency: 'EUR' });
     expect(handoff.summary.items[0]?.unitPrice).toEqual({ amount: 2000, currency: 'EUR' });
     expect(handoff.summary.items[0]?.totalPrice).toEqual({ amount: 2000, currency: 'EUR' });
     expect(handoff.continueUrl).toBe('https://shop.example.test/ucp/embedded/checkout/checkout-1');
@@ -374,7 +437,8 @@ function createTotalsCart() {
     ],
     totals: [
       { type: 'subtotal', amount: 2000 },
-      { type: 'total', amount: 2000 },
+      { type: 'fulfillment', amount: 490 },
+      { type: 'total', amount: 2490 },
     ],
   };
 }

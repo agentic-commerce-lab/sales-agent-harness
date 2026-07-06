@@ -1,4 +1,8 @@
-import type { ShopwareCart, ShopwareLineItem } from './shopware-store-api-client.js';
+import type {
+  ShopwareCart,
+  ShopwareDelivery,
+  ShopwareLineItem,
+} from './shopware-store-api-client.js';
 import { parsePrice } from './shopware-store-api-price-parser.js';
 import {
   readOptionalNumber,
@@ -14,8 +18,19 @@ export function parseCart(payload: unknown): ShopwareCart {
   return {
     token: readOptionalString(record.token),
     lineItems: parseLineItems(record.lineItems),
+    deliveries: parseDeliveries(record.deliveries),
     price: parseCartPrice(record.price),
   };
+}
+
+function parseDeliveries(payload: unknown): readonly ShopwareDelivery[] {
+  if (!Array.isArray(payload)) {
+    return [];
+  }
+
+  return payload.map((delivery) => ({
+    shippingCosts: parsePrice(readRecord(delivery).shippingCosts),
+  }));
 }
 
 function parseLineItems(payload: unknown): readonly ShopwareLineItem[] {

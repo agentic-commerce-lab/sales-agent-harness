@@ -24,6 +24,10 @@ export interface UcpProduct {
     | undefined;
   readonly available?: boolean | undefined;
   readonly categories?: readonly string[] | undefined;
+  readonly attributes?: Readonly<Record<string, string>> | undefined;
+  readonly variants?: readonly UcpProduct[] | undefined;
+  readonly deliveryEstimate?: string | undefined;
+  readonly delivery_estimate?: string | undefined;
 }
 
 export interface UcpProductSearchResponse {
@@ -47,23 +51,19 @@ export interface UcpCart {
   readonly currency: string;
   readonly lineItems?: readonly UcpLineItem[] | undefined;
   readonly line_items?: readonly UcpLineItem[] | undefined;
-  readonly moneySummary?:
-    | {
-        readonly subtotal?: UcpMoney | undefined;
-        readonly total?: UcpMoney | undefined;
-      }
-    | undefined;
-  readonly money_summary?:
-    | {
-        readonly subtotal?: UcpMoney | undefined;
-        readonly total?: UcpMoney | undefined;
-      }
-    | undefined;
+  readonly moneySummary?: UcpMoneySummary | undefined;
+  readonly money_summary?: UcpMoneySummary | undefined;
   readonly continueUrl?: string | undefined;
   readonly continue_url?: string | undefined;
   readonly links?: readonly { readonly rel?: string; readonly href?: string }[] | undefined;
   readonly totals?: readonly UcpTotal[] | undefined;
   readonly order?: { readonly id?: string | undefined } | undefined;
+}
+
+export interface UcpMoneySummary {
+  readonly subtotal?: UcpMoney | undefined;
+  readonly fulfillment?: UcpMoney | undefined;
+  readonly total?: UcpMoney | undefined;
 }
 
 export interface UcpTotal {

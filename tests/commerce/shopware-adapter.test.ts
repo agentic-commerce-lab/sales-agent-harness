@@ -59,6 +59,15 @@ function createRawCart() {
         },
       },
     ],
+    deliveries: [
+      {
+        shippingCosts: {
+          unitPrice: 4.9,
+          totalPrice: 4.9,
+          currency: 'EUR',
+        },
+      },
+    ],
     price: {
       positionPrice: 238,
       totalPrice: 238,
@@ -111,6 +120,14 @@ describe('ShopwareAdapter', () => {
     expect(updated.cart.items[0]?.quantity).toBe(2);
     expect(summary.cart.cartId).toBe('cart');
     expect(JSON.stringify({ created, updated, summary })).not.toContain('secret-cart-token');
+  });
+
+  test('surfaces shipping costs from cart deliveries', async () => {
+    const adapter = new ShopwareAdapter({ client: createClient() });
+
+    const summary = await adapter.getCartSummary({ cartId: 'cart-1' });
+
+    expect(summary.cart.shipping).toEqual({ amount: 4.9, currency: 'EUR' });
   });
 
   test('wraps Store API failures with cause', async () => {

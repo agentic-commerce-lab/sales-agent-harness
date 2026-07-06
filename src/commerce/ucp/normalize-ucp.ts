@@ -11,6 +11,7 @@ const defaultCurrency = 'EUR';
 
 export function normalizeUcpProduct(product: UcpProduct): ProductSummary {
   const price = normalizeProductPrice(product);
+  const deliveryEstimate = product.deliveryEstimate ?? product.delivery_estimate;
 
   return {
     id: product.id,
@@ -20,23 +21,20 @@ export function normalizeUcpProduct(product: UcpProduct): ProductSummary {
     ...(product.description ? { description: product.description } : {}),
     ...(product.available !== undefined ? { available: product.available } : {}),
     ...(price ? { price } : {}),
+    ...(deliveryEstimate ? { deliveryEstimate } : {}),
   };
 }
 
 export function normalizeUcpProductDetails(product: UcpProduct): ProductDetails {
   return {
     ...normalizeUcpProduct(product),
-    attributes: {},
-    variants: [],
+    attributes: product.attributes ?? {},
+    variants: product.variants?.map(normalizeUcpProduct) ?? [],
   };
 }
 
 export function normalizeUcpCart(cart: UcpCart): CartSummary {
-  const currency =
-    cart.currency ??
-    cart.money_summary?.total?.currency ??
-    cart.moneySummary?.total?.currency ??
-    defaultCurrency;
+  const currency = normalizeCartCurrency(cart);
   const lineItems = cart.line_items ?? cart.lineItems ?? [];
   const money = normalizeCartMoney(cart, currency);
 
@@ -44,6 +42,7 @@ export function normalizeUcpCart(cart: UcpCart): CartSummary {
     cartId: cart.id,
     items: lineItems.map((item) => normalizeLineItem(item, currency)),
     subtotal: money.subtotal,
+    ...(money.shipping ? { shipping: money.shipping } : {}),
     total: money.total,
     currency,
   };
@@ -88,6 +87,15 @@ function normalizeLineItem(item: UcpLineItem, cartCurrency: string): CartLineIte
   };
 }
 
+function normalizeCartCurrency(cart: UcpCart): string {
+  return (
+    cart.currency ??
+    cart.money_summary?.total?.currency ??
+    cart.moneySummary?.total?.currency ??
+    defaultCurrency
+  );
+}
+
 function normalizeCartMoney(cart: UcpCart, currency: string) {
   const summary = cart.money_summary ?? cart.moneySummary;
 
@@ -96,11 +104,24 @@ function normalizeCartMoney(cart: UcpCart, currency: string) {
       summary?.subtotal ??
       totalByType(cart.totals, 'subtotal', currency) ??
       normalizeRequiredMoney(0, currency),
+    shipping: normalizeCartShipping(cart, summary, currency),
     total:
       summary?.total ??
       totalByType(cart.totals, 'total', currency) ??
       normalizeRequiredMoney(0, currency),
   };
+}
+
+function normalizeCartShipping(
+  cart: UcpCart,
+  summary: UcpCart['money_summary'],
+  currency: string,
+): Money | undefined {
+  return (
+    summary?.fulfillment ??
+    totalByType(cart.totals, 'fulfillment', currency) ??
+    totalByType(cart.totals, 'shipping', currency)
+  );
 }
 
 function lineItemUnitPrice(item: UcpLineItem, cartCurrency: string): Money {
