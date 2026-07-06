@@ -46,6 +46,9 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Test
+        run: bun test
+
       - name: Shared contract structure
         run: bun run quality:contracts
 

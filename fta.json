@@ -1,5 +1,5 @@
 {
-  "score_cap": 50,
+  "score_cap": 60,
   "include_comments": false,
   "exclude_under": 6,
   "output_limit": 5000,
