@@ -32,7 +32,6 @@ export class UcpHttpSigner {
     });
   }
 
-  // fallow-ignore-next-line unused-class-member
   sign(input: UcpHttpSignatureInput): UcpHttpSignatureHeaders {
     const headers = new Map(input.headers);
     const contentDigest = input.body === undefined ? undefined : createContentDigest(input.body);

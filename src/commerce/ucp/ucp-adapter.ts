@@ -47,7 +47,6 @@ export class UcpAdapter implements CommerceAdapter {
     }
   }
 
-  // fallow-ignore-next-line unused-class-member
   async getProductDetails(input: ProductDetailsInput): Promise<ProductDetailsResult> {
     try {
       const product = await this.#client.getProductDetails(input);
