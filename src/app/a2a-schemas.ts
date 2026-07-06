@@ -3,6 +3,7 @@ import { z } from 'zod';
 const metadataSchema = z.record(z.string(), z.unknown()).optional();
 
 const a2aPartSchema = z.object({
+  kind: z.enum(['text', 'data', 'file', 'url']).optional(),
   text: z.string().optional(),
   data: z.unknown().optional(),
   mediaType: z.string().optional(),

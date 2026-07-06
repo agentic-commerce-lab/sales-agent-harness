@@ -43,6 +43,7 @@ export function createRunnableSalesAgentHarnessApp(
         apiKey: input.environment.runtime.apiKey,
         modelName: input.environment.runtime.modelName,
         tools,
+        systemPrompt: agentConfig.systemPrompt,
       }),
   });
 }

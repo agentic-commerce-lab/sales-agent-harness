@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { z } from 'zod';
 
 import {
@@ -34,6 +35,7 @@ const shopwareAgentConfigSchema = z.object({
 const agentHarnessConfigSchema = z.object({
   agentId: z.string().min(1),
   merchantId: z.string().min(1),
+  systemPrompt: z.string().optional(),
   enabledCapabilities: z.array(z.enum(harnessCapabilities)).min(1),
   disabledCapabilities: z.array(z.enum(disabledCommerceCapabilities)),
   policies: agentPolicyConfigSchema,
@@ -55,9 +57,20 @@ export async function loadAgentHarnessConfig(configPath: string): Promise<AgentH
 
   try {
     const parsedConfig: unknown = JSON.parse(rawConfig);
+    const config = parseAgentHarnessConfig(parsedConfig);
 
-    return parseAgentHarnessConfig(parsedConfig);
+    const promptFile = extractSystemPromptFile(parsedConfig);
+    if (!promptFile) return config;
+
+    const promptPath = resolve(dirname(configPath), promptFile);
+    const systemPrompt = (await readFile(promptPath, 'utf8')).trim();
+    return { ...config, systemPrompt };
   } catch (error) {
     throw new Error(`Failed to load agent harness config from ${configPath}`, { cause: error });
   }
+}
+
+function extractSystemPromptFile(config: unknown): string | undefined {
+  const result = z.object({ systemPromptFile: z.string().optional() }).safeParse(config);
+  return result.success ? result.data.systemPromptFile : undefined;
 }

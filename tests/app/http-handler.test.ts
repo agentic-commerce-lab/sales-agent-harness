@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { a2aProtocolVersion } from '../../src/app/a2a-constants.js';
 import { createSalesAgentHttpHandler, type SalesAgentHttpApp } from '../../src/app/http-handler.js';
 import type { PublicAgentSession } from '../../src/contracts/session.js';
 
@@ -130,7 +131,9 @@ test('createSalesAgentHttpHandler requires A2A-Version on message send requests'
   );
 
   expect(response.status).toBe(400);
-  expect(await response.json()).toEqual({ error: 'A2A-Version header must be 0.3.0' });
+  expect(await response.json()).toEqual({
+    error: `A2A-Version header must be ${a2aProtocolVersion}`,
+  });
 });
 
 test('createSalesAgentHttpHandler does not expose legacy A2A message aliases', async () => {
@@ -255,14 +258,22 @@ function createExpectedAgentCard() {
       'Merchant-controlled seller agent for safe product search, cart preparation, and checkout handoff.',
     url: 'https://harness.example.test',
     version: '0.1.0',
-    protocolVersion: '0.3.0',
-    preferredTransport: 'JSONRPC',
+    protocolVersion: a2aProtocolVersion,
     capabilities: {
       streaming: false,
       pushNotifications: false,
     },
     defaultInputModes: ['text/plain'],
     defaultOutputModes: ['text/plain'],
+    supportedInterfaces: [
+      {
+        url: 'https://harness.example.test',
+        transport: 'JSONRPC',
+        protocolVersion: a2aProtocolVersion,
+      },
+    ],
+    securitySchemes: {},
+    security: [],
     skills: [
       {
         id: 'seller-agent-commerce',
@@ -287,14 +298,14 @@ function createExpectedA2aTask() {
       message: {
         messageId: 'msg-1-response',
         role: 'agent',
-        parts: [{ text: 'Hello' }],
+        parts: [{ kind: 'text', text: 'Hello' }],
       },
     },
     artifacts: [
       {
         artifactId: 'msg-1-artifact',
         name: 'Seller agent response',
-        parts: [{ text: 'Hello' }],
+        parts: [{ kind: 'text', text: 'Hello' }],
         metadata: { toolCalls: [] },
       },
     ],
@@ -317,7 +328,7 @@ function a2aRequest(
   const headers = new Headers({ 'content-type': 'application/a2a+json' });
 
   if (options.includeVersion ?? true) {
-    headers.set('A2A-Version', '0.3.0');
+    headers.set('A2A-Version', a2aProtocolVersion);
   }
 
   return new Request(`https://harness.example.test${path}`, {

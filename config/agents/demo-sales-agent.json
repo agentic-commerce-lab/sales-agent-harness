@@ -1,6 +1,7 @@
 {
   "agentId": "demo-sales-agent",
   "merchantId": "demo-shopware-merchant",
+  "systemPromptFile": "demo-sales-agent.prompt.md",
   "enabledCapabilities": [
     "searchProducts",
     "getProductDetails",

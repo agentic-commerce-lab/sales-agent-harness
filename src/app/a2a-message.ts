@@ -37,14 +37,14 @@ function createCompletedTask(
       message: {
         messageId: `${message.messageId}-response`,
         role: 'agent',
-        parts: [{ text: response.message }],
+        parts: [{ kind: 'text', text: response.message }],
       },
     },
     artifacts: [
       {
         artifactId: `${taskId}-artifact`,
         name: 'Seller agent response',
-        parts: [{ text: response.message }],
+        parts: [{ kind: 'text', text: response.message }],
         metadata: { toolCalls: [...response.toolCalls] },
       },
     ],

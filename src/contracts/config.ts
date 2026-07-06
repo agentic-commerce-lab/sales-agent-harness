@@ -52,6 +52,7 @@ export interface ShopwareAgentConfig {
 export interface AgentHarnessConfig {
   readonly agentId: string;
   readonly merchantId: string;
+  readonly systemPrompt?: string | undefined;
   readonly enabledCapabilities: readonly HarnessCapability[];
   readonly disabledCapabilities: readonly DisabledCommerceCapability[];
   readonly policies: AgentPolicyConfig;

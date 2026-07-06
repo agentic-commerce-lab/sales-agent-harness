@@ -56,7 +56,7 @@ export interface CreateLangGraphDeepAgentRuntimeInput {
   readonly apiKey: string;
   readonly modelName: string;
   readonly tools: readonly ExecutableLangGraphRuntimeTool[];
-  readonly systemPrompt?: string;
+  readonly systemPrompt?: string | undefined;
   readonly createDeepAgent?: (params: DeepAgentFactoryParams) => DeepAgentGraph;
   readonly createModel?: (input: ModelFactoryInput) => DeepAgentModel;
 }

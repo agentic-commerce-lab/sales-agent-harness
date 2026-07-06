@@ -68,8 +68,9 @@ async function handleRequest(
     log(`← ${response.status} (${Date.now() - start}ms)`);
     return response;
   } catch (error) {
-    logError(`← 500 unhandled error (${Date.now() - start}ms)`, error);
-    return jsonResponse(toErrorResponse(error), isInputError(error) ? 400 : 500);
+    const status = isInputError(error) ? 400 : 500;
+    logError(`← ${status} error (${Date.now() - start}ms)`, error);
+    return jsonResponse(toErrorResponse(error), status);
   }
 }
 
