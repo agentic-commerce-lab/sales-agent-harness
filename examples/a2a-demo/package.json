@@ -1,0 +1,15 @@
+{
+  "name": "@sales-agent-harness/a2a-demo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env --import tsx/esm src/server.ts",
+    "dev": "node --env-file=.env --watch --import tsx/esm src/server.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
