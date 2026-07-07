@@ -49,9 +49,19 @@ export interface ShopwareAgentConfig {
   readonly storefrontBaseUrl: string;
 }
 
+export interface AgentProfileConfig {
+  readonly displayName: string;
+  readonly description: string;
+  readonly serviceSummary?: string | undefined;
+  readonly supportedLanguages?: readonly string[] | undefined;
+  readonly contactUrl?: string | undefined;
+  readonly examples?: readonly string[] | undefined;
+}
+
 export interface AgentHarnessConfig {
   readonly agentId: string;
   readonly merchantId: string;
+  readonly agentProfile?: AgentProfileConfig | undefined;
   readonly systemPrompt?: string | undefined;
   readonly enabledCapabilities: readonly HarnessCapability[];
   readonly disabledCapabilities: readonly DisabledCommerceCapability[];

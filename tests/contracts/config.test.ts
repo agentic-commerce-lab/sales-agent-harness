@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 
-import { parseAgentHarnessConfig } from '../../src/config/load-agent-config.js';
+import {
+  loadAgentHarnessConfig,
+  parseAgentHarnessConfig,
+} from '../../src/config/load-agent-config.js';
 
 function createValidConfig() {
   return {
@@ -47,9 +50,21 @@ function createValidConfig() {
 
 describe('parseAgentHarnessConfig', () => {
   test('accepts a demo merchant config with only MVP commerce capabilities enabled', () => {
-    const config = parseAgentHarnessConfig(createValidConfig());
+    const config = parseAgentHarnessConfig({
+      ...createValidConfig(),
+      agentProfile: {
+        displayName: 'Demo Store Agent',
+        description: 'Helps buyers find products and prepare checkout.',
+        serviceSummary: 'Catalog, cart, and checkout support for the demo store.',
+        supportedLanguages: ['en', 'de'],
+        contactUrl: 'https://shop.example.test/contact',
+        examples: ['Find waterproof jackets', 'Prepare a cart with two jackets'],
+      },
+    });
 
     expect(config.agentId).toBe('demo-sales-agent');
+    expect(config.agentProfile?.displayName).toBe('Demo Store Agent');
+    expect(config.agentProfile?.supportedLanguages).toEqual(['en', 'de']);
     expect(config.enabledCapabilities).toContain('prepareCheckoutHandoff');
     expect(config.disabledCapabilities).toContain('payments');
     expect(config.policies.allowedChannels).toEqual(['customer_ui', 'a2a']);
@@ -91,5 +106,18 @@ describe('parseAgentHarnessConfig', () => {
         },
       }),
     ).toThrow('Invalid agent harness config');
+  });
+});
+
+describe('loadAgentHarnessConfig', () => {
+  test('loads demo prompt with shop-only product and unknown-data guardrails', async () => {
+    const config = await loadAgentHarnessConfig('config/agents/demo-sales-agent.json');
+
+    expect(config.systemPrompt).toContain('Only sell products that were returned by harness tools');
+    expect(config.systemPrompt).toContain(
+      'Do not recommend substitute products from general knowledge',
+    );
+    expect(config.systemPrompt).toContain('state that the shop data is unknown');
+    expect(config.systemPrompt).toContain('If a returned product is unavailable');
   });
 });

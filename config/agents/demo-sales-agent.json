@@ -1,6 +1,18 @@
 {
   "agentId": "demo-sales-agent",
   "merchantId": "demo-shopware-merchant",
+  "agentProfile": {
+    "displayName": "Demo Store Sales Agent",
+    "description": "Merchant-controlled seller agent for product discovery, cart preparation, checkout handoff, and opt-in UCP checkout completion.",
+    "serviceSummary": "Search trusted Shopware catalog data, prepare carts, summarize totals, create checkout handoffs, and complete UCP checkout when merchant policy allows it.",
+    "supportedLanguages": ["en"],
+    "contactUrl": "https://shop.example.test/contact",
+    "examples": [
+      "Find waterproof jackets",
+      "Prepare a cart with two of product product-1",
+      "Complete checkout for checkout-1 after buyer confirmation"
+    ]
+  },
   "systemPromptFile": "demo-sales-agent.prompt.md",
   "enabledCapabilities": [
     "searchProducts",

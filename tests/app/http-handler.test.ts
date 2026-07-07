@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
+import { z } from 'zod';
 import { a2aProtocolVersion } from '../../src/app/a2a-constants.js';
 import { createSalesAgentHttpHandler, type SalesAgentHttpApp } from '../../src/app/http-handler.js';
+import type { AgentHarnessConfig } from '../../src/contracts/config.js';
 import type { PublicAgentSession } from '../../src/contracts/session.js';
 
 test('createSalesAgentHttpHandler creates sessions, handles chat, and returns JSON responses', async () => {
@@ -107,6 +109,44 @@ test('createSalesAgentHttpHandler exposes A2A discovery and message send endpoin
   expect(calls).toContainEqual({
     route: 'chat',
     input: { agentSessionId: 'session-1', message: 'Find waterproof jackets' },
+  });
+});
+
+test('createSalesAgentHttpHandler exposes configured agent profile in the A2A card', async () => {
+  const handler = createSalesAgentHttpHandler({
+    app: createSessionChatApp([]),
+    agentConfig: {
+      ...createHttpAgentConfig(),
+      agentProfile: {
+        displayName: 'Demo Store Concierge',
+        description: 'Finds products, prepares carts, and completes checkout when enabled.',
+        serviceSummary: 'Demo store catalog, cart, and checkout support.',
+        supportedLanguages: ['en', 'de'],
+        contactUrl: 'https://shop.example.test/contact',
+        examples: ['Find waterproof jackets', 'Complete checkout for checkout-1'],
+      },
+    },
+  });
+
+  const response = await handler.handle(
+    new Request('https://harness.example.test/.well-known/agent-card.json'),
+  );
+  const card = profileAgentCardSchema.parse(await response.json());
+
+  expect(card.name).toBe('Demo Store Concierge');
+  expect(card.description).toBe(
+    'Finds products, prepares carts, and completes checkout when enabled.',
+  );
+  expect(card.skills[0].description).toBe('Demo store catalog, cart, and checkout support.');
+  expect(card.skills[0].examples).toEqual([
+    'Find waterproof jackets',
+    'Complete checkout for checkout-1',
+  ]);
+  expect(card.metadata).toEqual({
+    merchantId: 'merchant-1',
+    agentId: 'agent-1',
+    supportedLanguages: ['en', 'de'],
+    contactUrl: 'https://shop.example.test/contact',
   });
 });
 
@@ -219,6 +259,18 @@ function createSessionChatApp(calls: unknown[]): SalesAgentHttpApp {
   };
 }
 
+const profileAgentCardSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  skills: z.tuple([
+    z.object({
+      description: z.string(),
+      examples: z.array(z.string()),
+    }),
+  ]),
+  metadata: z.unknown(),
+});
+
 function createCommerceRoutingApp(): SalesAgentHttpApp {
   return {
     createSession: () => {
@@ -255,7 +307,7 @@ function createExpectedAgentCard() {
   return {
     name: 'Sales Agent Harness',
     description:
-      'Merchant-controlled seller agent for safe product search, cart preparation, and checkout handoff.',
+      'Merchant-controlled seller agent for safe product search, cart preparation, checkout handoff, and policy-gated checkout completion.',
     url: 'https://harness.example.test',
     version: '0.1.0',
     protocolVersion: a2aProtocolVersion,
@@ -279,8 +331,8 @@ function createExpectedAgentCard() {
         id: 'seller-agent-commerce',
         name: 'Seller Agent Commerce',
         description:
-          'Search products, answer commerce questions, prepare carts, and create non-binding checkout handoffs.',
-        tags: ['commerce', 'shopware', 'cart', 'checkout-handoff'],
+          'Search products, answer commerce questions, prepare carts, create checkout handoffs, and complete checkout when merchant policy allows it.',
+        tags: ['commerce', 'shopware', 'cart', 'checkout'],
         examples: ['Find waterproof jackets', 'Prepare a cart with two of product product-1'],
         inputModes: ['text/plain'],
         outputModes: ['text/plain'],
@@ -309,6 +361,39 @@ function createExpectedA2aTask() {
         metadata: { toolCalls: [] },
       },
     ],
+  };
+}
+
+function createHttpAgentConfig(): AgentHarnessConfig {
+  return {
+    agentId: 'agent-1',
+    merchantId: 'merchant-1',
+    enabledCapabilities: ['searchProducts', 'prepareCheckoutHandoff'],
+    disabledCapabilities: [
+      'quotes',
+      'negotiation',
+      'payments',
+      'orderCreation',
+      'bindingQuotes',
+      'customDiscounts',
+      'customerAccountMutation',
+    ],
+    policies: {
+      allowedChannels: ['customer_ui', 'a2a'],
+      blockedCategories: [],
+      blockedProducts: [],
+      maxCartValue: { amount: 1000, currency: 'EUR' },
+      maxItemQuantity: 5,
+      allowCheckoutHandoff: true,
+      allowCheckoutCompletion: false,
+      requireHumanApprovalForCheckout: false,
+      unsupportedRegions: [],
+      confidentialFields: ['shopwareContextToken'],
+    },
+    shopware: {
+      salesChannelId: 'sales-channel-1',
+      storefrontBaseUrl: 'https://shop.example.test',
+    },
   };
 }
 

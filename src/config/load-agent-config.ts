@@ -32,9 +32,19 @@ const shopwareAgentConfigSchema = z.object({
   storefrontBaseUrl: z.url(),
 });
 
+const agentProfileConfigSchema = z.object({
+  displayName: z.string().min(1),
+  description: z.string().min(1),
+  serviceSummary: z.string().min(1).optional(),
+  supportedLanguages: z.array(z.string().min(2)).optional(),
+  contactUrl: z.url().optional(),
+  examples: z.array(z.string().min(1)).optional(),
+});
+
 const agentHarnessConfigSchema = z.object({
   agentId: z.string().min(1),
   merchantId: z.string().min(1),
+  agentProfile: agentProfileConfigSchema.optional(),
   systemPrompt: z.string().optional(),
   enabledCapabilities: z.array(z.enum(harnessCapabilities)).min(1),
   disabledCapabilities: z.array(z.enum(disabledCommerceCapabilities)),
