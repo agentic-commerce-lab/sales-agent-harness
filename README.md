@@ -10,7 +10,7 @@ and protocol research. It does not include production authentication, tenant iso
 limiting, payment authorization, fraud controls, compliance review, admin operations, or an
 operations-grade persistence and deployment model.
 
-## What This App Does
+## Research Preview Scope
 
 The harness is a controlled execution layer between an agent runtime and a commerce backend. The
 agent runtime can only call typed harness capabilities that are enabled in merchant config. The
