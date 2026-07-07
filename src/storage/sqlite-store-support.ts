@@ -1,30 +1,32 @@
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { z } from 'zod';
-import { agentChannels, harnessCapabilities } from '../contracts/config.js';
+import type { z } from 'zod';
 import type { AgentSession } from '../contracts/session.js';
 import type { HandoffRecord } from '../handoff/handoff-store.js';
 import type { CheckoutIdempotencyRecord } from '../harness/checkout-idempotency-store.js';
 import type { AuditEvent } from '../observability/audit-log.js';
 import type { AgentRun } from '../runtime/agent-runtime.js';
+import {
+  type agentRunRowSchema,
+  agentRuntimeInputSchema,
+  agentRuntimeResponseSchema,
+  auditDataSourcesSchema,
+  auditRowSchema,
+  cartSummarySchema,
+  type checkoutIdempotencyRowSchema,
+  completedCheckoutResultSchema,
+  handoffRowSchema,
+  parseCustomerContextJson,
+  type sessionRowSchema,
+} from './sqlite-store-schemas.js';
 
-const auditEventTypes = [
-  'session_created',
-  'user_request',
-  'agent_response',
-  'tool_call',
-  'policy_decision',
-  'commerce_call',
-  'cart_change',
-  'blocked_action',
-  'checkout_handoff',
-  'checkout_completion',
-  'error',
-] as const;
-
-const policyDecisionStatuses = ['allow', 'block', 'escalate'] as const;
-const agentRunStatuses = ['running', 'completed', 'failed', 'cancelled'] as const;
+export {
+  agentRunRowSchema,
+  checkoutIdempotencyRowSchema,
+  handoffRowSchema,
+  sessionRowSchema,
+} from './sqlite-store-schemas.js';
 
 export function openDatabase(databasePath: string): Database {
   if (databasePath !== ':memory:') {
@@ -108,65 +110,6 @@ export function migrateCheckoutIdempotencyStore(db: Database): void {
   )`);
 }
 
-export const sessionRowSchema = z.object({
-  agent_session_id: z.string(),
-  merchant_id: z.string(),
-  agent_id: z.string(),
-  channel: z.enum(agentChannels),
-  customer_context_json: z.string(),
-  shopware_sales_channel_id: z.string().nullable(),
-  shopware_context_token: z.string().nullable(),
-  created_at: z.string(),
-  expires_at: z.string().nullable(),
-});
-
-export const handoffRowSchema = z.object({
-  handoff_id: z.string(),
-  agent_session_id: z.string(),
-  merchant_id: z.string(),
-  shopware_sales_channel_id: z.string(),
-  shopware_context_token: z.string(),
-  cart_summary_json: z.string(),
-  expires_at: z.string(),
-  status: z.enum(['ready_for_checkout', 'used']),
-});
-
-const auditRowSchema = z.object({
-  type: z.enum(auditEventTypes),
-  agent_session_id: z.string(),
-  merchant_id: z.string(),
-  agent_id: z.string(),
-  channel: z.enum(agentChannels),
-  capability: z.enum(harnessCapabilities).nullable(),
-  policy_decision: z.enum(policyDecisionStatuses).nullable(),
-  data_sources_json: z.string().nullable(),
-  cart_id: z.string().nullable(),
-  handoff_id: z.string().nullable(),
-  error_name: z.string().nullable(),
-  error_message: z.string().nullable(),
-  occurred_at: z.string(),
-});
-
-export const agentRunRowSchema = z.object({
-  run_id: z.string(),
-  agent_session_id: z.string(),
-  status: z.enum(agentRunStatuses),
-  input_json: z.string(),
-  response_json: z.string().nullable(),
-  error_name: z.string().nullable(),
-  error_message: z.string().nullable(),
-  created_at: z.string(),
-  updated_at: z.string(),
-});
-
-export const checkoutIdempotencyRowSchema = z.object({
-  merchant_id: z.string(),
-  agent_session_id: z.string(),
-  idempotency_key: z.string(),
-  result_json: z.string(),
-  created_at: z.string(),
-});
-
 export function sessionFromRow(row: z.infer<typeof sessionRowSchema>): AgentSession {
   const commerceContext =
     row.shopware_sales_channel_id && row.shopware_context_token
@@ -230,6 +173,24 @@ export function readAuditRow(value: unknown): AuditEvent {
   };
 }
 
+export function auditEventInsertValues(event: AuditEvent): readonly (string | null)[] {
+  return [
+    event.type,
+    event.agentSessionId,
+    event.merchantId,
+    event.agentId,
+    event.channel,
+    event.capability ?? null,
+    event.policyDecision ?? null,
+    event.dataSources ? JSON.stringify(event.dataSources) : null,
+    event.cartId ?? null,
+    event.handoffId ?? null,
+    event.error?.name ?? null,
+    event.error?.message ?? null,
+    event.occurredAt.toISOString(),
+  ];
+}
+
 export function agentRunFromRow(row: z.infer<typeof agentRunRowSchema>): AgentRun {
   return {
     runId: row.run_id,
@@ -259,62 +220,8 @@ export function checkoutIdempotencyFromRow(
   };
 }
 
-const customerContextSchema = z.object({
-  customerId: z.string().optional(),
-  customerGroup: z.string().optional(),
-  region: z.string().optional(),
-});
-
-const moneySchema = z.object({
-  amount: z.number(),
-  currency: z.string(),
-});
-
-const cartSummarySchema = z.object({
-  cartId: z.string(),
-  items: z.array(
-    z.object({
-      productId: z.string(),
-      label: z.string(),
-      quantity: z.number(),
-      unitPrice: moneySchema,
-      totalPrice: moneySchema,
-    }),
-  ),
-  subtotal: moneySchema,
-  shipping: moneySchema.optional(),
-  total: moneySchema,
-  currency: z.string(),
-});
-
-const auditDataSourcesSchema = z.array(
-  z.enum(['shopware_store_api', 'ucp', 'policy_config', 'session_store']),
-);
-
-const agentRuntimeMessageSchema = z.object({
-  role: z.enum(['user', 'assistant']),
-  content: z.string(),
-});
-
-const agentRuntimeInputSchema = z.object({
-  agentSessionId: z.string(),
-  message: z.string(),
-  messages: z.array(agentRuntimeMessageSchema).optional(),
-});
-
-const agentRuntimeResponseSchema = z.object({
-  message: z.string(),
-  toolCalls: z.array(z.string()),
-});
-
-const completedCheckoutResultSchema = z.object({
-  summary: cartSummarySchema,
-  orderId: z.string().optional(),
-  status: z.literal('completed'),
-});
-
 function readCustomerContext(value: string): AgentSession['customerContext'] {
-  const parsed = customerContextSchema.parse(JSON.parse(value));
+  const parsed = parseCustomerContextJson(value);
 
   return {
     ...(parsed.customerId ? { customerId: parsed.customerId } : {}),

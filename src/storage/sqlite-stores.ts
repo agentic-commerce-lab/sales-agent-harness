@@ -1,24 +1,21 @@
 import type { Database } from 'bun:sqlite';
 import type { AgentSession, CommerceContext, PublicAgentSession } from '../contracts/session.js';
-import type { HandoffRecord, HandoffStore } from '../handoff/handoff-store.js';
-import type {
-  CheckoutIdempotencyRecord,
-  CheckoutIdempotencyStore,
-} from '../harness/checkout-idempotency-store.js';
-import type { AuditEvent, AuditLogger } from '../observability/audit-log.js';
-import type { AgentRunStore } from '../runtime/agent-run-store.js';
-import type { AgentRun } from '../runtime/agent-runtime.js';
-import type { SessionStore } from '../session/session-store.js';
 import {
-  agentRunFromRow,
-  agentRunRowSchema,
-  checkoutIdempotencyFromRow,
-  checkoutIdempotencyRowSchema,
+  type HandoffRecord,
+  type HandoffStore,
+  isResolvableHandoff,
+} from '../handoff/handoff-store.js';
+import type { AuditEvent, AuditLogger } from '../observability/audit-log.js';
+import {
+  isSessionAvailable,
+  type SessionStore,
+  toPublicSession,
+} from '../session/session-store.js';
+import {
+  auditEventInsertValues,
   handoffFromRow,
   handoffRowSchema,
-  migrateAgentRunStore,
   migrateAuditLog,
-  migrateCheckoutIdempotencyStore,
   migrateHandoffStore,
   migrateSessionStore,
   openDatabase,
@@ -27,6 +24,11 @@ import {
   sessionFromRow,
   sessionRowSchema,
 } from './sqlite-store-support.js';
+
+export {
+  SqliteAgentRunStore,
+  SqliteCheckoutIdempotencyStore,
+} from './sqlite-runtime-stores.js';
 
 export interface SqliteStoreOptions {
   readonly databasePath: string;
@@ -93,11 +95,7 @@ export class SqliteSessionStore implements SessionStore {
   getSession(agentSessionId: string, merchantId: string): AgentSession | undefined {
     const session = this.#getSessionById(agentSessionId);
 
-    if (!session || session.merchantId !== merchantId) {
-      return undefined;
-    }
-
-    if (session.expiresAt && session.expiresAt <= this.#now()) {
+    if (!isSessionAvailable(session, merchantId, this.#now())) {
       return undefined;
     }
 
@@ -112,20 +110,7 @@ export class SqliteSessionStore implements SessionStore {
       return undefined;
     }
 
-    const publicSession: PublicAgentSession = {
-      agentSessionId: session.agentSessionId,
-      merchantId: session.merchantId,
-      agentId: session.agentId,
-      channel: session.channel,
-      customerContext: session.customerContext,
-      createdAt: session.createdAt,
-    };
-
-    if (session.expiresAt) {
-      return { ...publicSession, expiresAt: session.expiresAt };
-    }
-
-    return publicSession;
+    return toPublicSession(session);
   }
 
   #getSessionById(agentSessionId: string): AgentSession | undefined {
@@ -205,7 +190,7 @@ export class SqliteHandoffStore implements HandoffStore {
 
     const record = handoffFromRow(row);
 
-    if (!isResolvable(record, merchantId, shopwareSalesChannelId, this.#now())) {
+    if (!isResolvableHandoff(record, merchantId, shopwareSalesChannelId, this.#now())) {
       return undefined;
     }
 
@@ -251,129 +236,6 @@ export class SqliteAuditLogger implements AuditLogger {
           occurred_at
         ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(
-        event.type,
-        event.agentSessionId,
-        event.merchantId,
-        event.agentId,
-        event.channel,
-        event.capability ?? null,
-        event.policyDecision ?? null,
-        event.dataSources ? JSON.stringify(event.dataSources) : null,
-        event.cartId ?? null,
-        event.handoffId ?? null,
-        event.error?.name ?? null,
-        event.error?.message ?? null,
-        event.occurredAt.toISOString(),
-      );
+      .run(...auditEventInsertValues(event));
   }
-}
-
-export class SqliteAgentRunStore implements AgentRunStore {
-  readonly #db: Database;
-
-  constructor(options: { readonly databasePath: string }) {
-    this.#db = openDatabase(options.databasePath);
-    migrateAgentRunStore(this.#db);
-  }
-
-  // fallow-ignore-next-line unused-class-member
-  get(runId: string): AgentRun | undefined {
-    const row = agentRunRowSchema
-      .nullable()
-      .parse(this.#db.query('select * from agent_runs where run_id = ?').get(runId));
-
-    return row ? agentRunFromRow(row) : undefined;
-  }
-
-  // fallow-ignore-next-line unused-class-member
-  save(run: AgentRun): void {
-    this.#db
-      .query(
-        `insert or replace into agent_runs (
-          run_id,
-          agent_session_id,
-          status,
-          input_json,
-          response_json,
-          error_name,
-          error_message,
-          created_at,
-          updated_at
-        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        run.runId,
-        run.agentSessionId,
-        run.status,
-        JSON.stringify(run.input),
-        run.response ? JSON.stringify(run.response) : null,
-        run.error?.name ?? null,
-        run.error?.message ?? null,
-        run.createdAt.toISOString(),
-        run.updatedAt.toISOString(),
-      );
-  }
-}
-
-export class SqliteCheckoutIdempotencyStore implements CheckoutIdempotencyStore {
-  readonly #db: Database;
-
-  constructor(options: { readonly databasePath: string }) {
-    this.#db = openDatabase(options.databasePath);
-    migrateCheckoutIdempotencyStore(this.#db);
-  }
-
-  get(input: {
-    readonly merchantId: string;
-    readonly agentSessionId: string;
-    readonly idempotencyKey: string;
-  }): CheckoutIdempotencyRecord | undefined {
-    const row = checkoutIdempotencyRowSchema.nullable().parse(
-      this.#db
-        .query(
-          `select * from checkout_idempotency
-          where merchant_id = ?
-            and agent_session_id = ?
-            and idempotency_key = ?`,
-        )
-        .get(input.merchantId, input.agentSessionId, input.idempotencyKey),
-    );
-
-    return row ? checkoutIdempotencyFromRow(row) : undefined;
-  }
-
-  save(record: CheckoutIdempotencyRecord): void {
-    this.#db
-      .query(
-        `insert or replace into checkout_idempotency (
-          merchant_id,
-          agent_session_id,
-          idempotency_key,
-          result_json,
-          created_at
-        ) values (?, ?, ?, ?, ?)`,
-      )
-      .run(
-        record.merchantId,
-        record.agentSessionId,
-        record.idempotencyKey,
-        JSON.stringify(record.result),
-        record.createdAt.toISOString(),
-      );
-  }
-}
-
-function isResolvable(
-  record: HandoffRecord,
-  merchantId: string,
-  shopwareSalesChannelId: string,
-  now: Date,
-): boolean {
-  return (
-    record.status === 'ready_for_checkout' &&
-    record.merchantId === merchantId &&
-    record.shopwareSalesChannelId === shopwareSalesChannelId &&
-    record.expiresAt > now
-  );
 }

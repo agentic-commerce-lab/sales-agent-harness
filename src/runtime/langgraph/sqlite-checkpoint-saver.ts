@@ -17,7 +17,6 @@ import {
   TASKS,
   WRITES_IDX_MAP,
 } from '@langchain/langgraph-checkpoint';
-import { z } from 'zod';
 import {
   dumpValue,
   readCheckpoint,
@@ -25,30 +24,18 @@ import {
   readOptionalConfigurableString,
   readUnknown,
 } from './sqlite-checkpoint-codec.js';
-
-const checkpointRowSchema = z.object({
-  thread_id: z.string(),
-  checkpoint_ns: z.string(),
-  checkpoint_id: z.string(),
-  parent_checkpoint_id: z.string().nullable(),
-  type: z.string().nullable(),
-  checkpoint: z.instanceof(Uint8Array),
-  metadata: z.instanceof(Uint8Array),
-});
-
-const writeRowSchema = z.object({
-  task_id: z.string(),
-  channel: z.string(),
-  type: z.string().nullable(),
-  value: z.instanceof(Uint8Array),
-});
-
-const pendingSendRowSchema = z.object({
-  type: z.string().nullable(),
-  value: z.instanceof(Uint8Array),
-});
-
-type CheckpointRow = z.infer<typeof checkpointRowSchema>;
+import {
+  type CheckpointRow,
+  isLegacyCheckpoint,
+  listCheckpointRows,
+  pendingSendRowSchema,
+  readCheckpointId,
+  readCheckpointNamespace,
+  readCheckpointRow,
+  readThreadId,
+  setupCheckpointTables,
+  writeRowSchema,
+} from './sqlite-checkpoint-saver-support.js';
 
 class BunSqliteLangGraphCheckpointSaver extends BaseCheckpointSaver {
   readonly #db: Database;
@@ -62,16 +49,12 @@ class BunSqliteLangGraphCheckpointSaver extends BaseCheckpointSaver {
   async getTuple(config: RunnableConfig): Promise<CheckpointTuple | undefined> {
     this.#setup();
 
-    const row = this.#readCheckpointRow(config);
+    const row = readCheckpointRow(this.#db, config);
     if (!row) {
       return undefined;
     }
 
-    const checkpoint = await readCheckpoint(this.serde, row.type, row.checkpoint);
-    if (isLegacyCheckpoint(checkpoint) && row.parent_checkpoint_id) {
-      await this.#migratePendingSends(checkpoint, row.thread_id, row.parent_checkpoint_id);
-    }
-
+    const checkpoint = await this.#readCheckpointFromRow(row);
     return this.#tupleFromRow(row, checkpoint);
   }
 
@@ -81,14 +64,10 @@ class BunSqliteLangGraphCheckpointSaver extends BaseCheckpointSaver {
   ): AsyncGenerator<CheckpointTuple> {
     this.#setup();
 
-    const rows = await this.#listCheckpointRows(config, options);
+    const rows = await listCheckpointRows(this.#db, this.serde, config, options);
     const tuples = await Promise.all(
       rows.map(async (row) => {
-        const checkpoint = await readCheckpoint(this.serde, row.type, row.checkpoint);
-        if (isLegacyCheckpoint(checkpoint) && row.parent_checkpoint_id) {
-          await this.#migratePendingSends(checkpoint, row.thread_id, row.parent_checkpoint_id);
-        }
-
+        const checkpoint = await this.#readCheckpointFromRow(row);
         return this.#tupleFromRow(row, checkpoint);
       }),
     );
@@ -206,87 +185,17 @@ class BunSqliteLangGraphCheckpointSaver extends BaseCheckpointSaver {
       return;
     }
 
-    this.#db.query('pragma journal_mode = WAL').run();
-    this.#db
-      .query(
-        `create table if not exists checkpoints (
-          thread_id text not null,
-          checkpoint_ns text not null default '',
-          checkpoint_id text not null,
-          parent_checkpoint_id text,
-          type text,
-          checkpoint blob,
-          metadata blob,
-          primary key (thread_id, checkpoint_ns, checkpoint_id)
-        )`,
-      )
-      .run();
-    this.#db
-      .query(
-        `create table if not exists writes (
-          thread_id text not null,
-          checkpoint_ns text not null default '',
-          checkpoint_id text not null,
-          task_id text not null,
-          idx integer not null,
-          channel text not null,
-          type text,
-          value blob,
-          primary key (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
-        )`,
-      )
-      .run();
+    setupCheckpointTables(this.#db);
     this.#isSetup = true;
   }
 
-  #readCheckpointRow(config: RunnableConfig): CheckpointRow | undefined {
-    const threadId = readOptionalConfigurableString(config, 'thread_id');
-    if (!threadId) {
-      return undefined;
+  async #readCheckpointFromRow(row: CheckpointRow): Promise<Checkpoint> {
+    const checkpoint = await readCheckpoint(this.serde, row.type, row.checkpoint);
+    if (isLegacyCheckpoint(checkpoint) && row.parent_checkpoint_id) {
+      await this.#migratePendingSends(checkpoint, row.thread_id, row.parent_checkpoint_id);
     }
 
-    const checkpointNamespace = readCheckpointNamespace(config);
-    const checkpointId = readOptionalConfigurableString(config, 'checkpoint_id');
-    const row =
-      typeof checkpointId === 'string'
-        ? this.#db
-            .query(
-              `select *
-              from checkpoints
-              where thread_id = ?
-                and checkpoint_ns = ?
-                and checkpoint_id = ?`,
-            )
-            .get(threadId, checkpointNamespace, checkpointId)
-        : this.#db
-            .query(
-              `select *
-              from checkpoints
-              where thread_id = ?
-                and checkpoint_ns = ?
-              order by checkpoint_id desc
-              limit 1`,
-            )
-            .get(threadId, checkpointNamespace);
-
-    return checkpointRowSchema.nullable().parse(row) ?? undefined;
-  }
-
-  async #listCheckpointRows(
-    config: RunnableConfig,
-    options?: CheckpointListOptions,
-  ): Promise<CheckpointRow[]> {
-    const query = buildListCheckpointQuery(config, options);
-    const rows = this.#db
-      .query(query.sql)
-      .all(...query.args)
-      .map((row) => checkpointRowSchema.parse(row));
-    const matches = await Promise.all(
-      rows.map((row) => metadataMatchesFilter(row, options?.filter, this.serde)),
-    );
-    const filteredRows = rows.filter((_row, index) => matches[index]);
-
-    return typeof options?.limit === 'number' ? filteredRows.slice(0, options.limit) : filteredRows;
+    return checkpoint;
   }
 
   async #tupleFromRow(row: CheckpointRow, checkpoint: Checkpoint): Promise<CheckpointTuple> {
@@ -372,76 +281,4 @@ class BunSqliteLangGraphCheckpointSaver extends BaseCheckpointSaver {
 
 export function createSqliteLangGraphCheckpointSaver(databasePath: string): BaseCheckpointSaver {
   return new BunSqliteLangGraphCheckpointSaver(databasePath);
-}
-
-function buildListCheckpointQuery(
-  config: RunnableConfig,
-  options?: CheckpointListOptions,
-): { readonly sql: string; readonly args: string[] } {
-  const filters = [
-    ['thread_id', readOptionalConfigurableString(config, 'thread_id')],
-    ['checkpoint_ns', readOptionalConfigurableString(config, 'checkpoint_ns')],
-    ['checkpoint_id', readOptionalConfigurableString(options?.before, 'checkpoint_id'), '<'],
-  ] as const;
-  const clauses = filters.flatMap(([column, value, operator = '=']) =>
-    typeof value === 'string' ? [`${column} ${operator} ?`] : [],
-  );
-  const args = filters.flatMap(([_column, value]) => (typeof value === 'string' ? [value] : []));
-
-  return {
-    sql: `select *
-      from checkpoints
-      ${clauses.length > 0 ? `where ${clauses.join(' and ')}` : ''}
-      order by checkpoint_id desc`,
-    args,
-  };
-}
-
-function readThreadId(config: RunnableConfig): string {
-  const threadId = readOptionalConfigurableString(config, 'thread_id');
-  if (typeof threadId !== 'string') {
-    throw new Error('Missing "thread_id" field in passed "config.configurable".');
-  }
-
-  return threadId;
-}
-
-function readCheckpointId(config: RunnableConfig): string {
-  const checkpointId = readOptionalConfigurableString(config, 'checkpoint_id');
-  if (typeof checkpointId !== 'string') {
-    throw new Error('Missing "checkpoint_id" field in passed "config.configurable".');
-  }
-
-  return checkpointId;
-}
-
-function readCheckpointNamespace(config: RunnableConfig): string {
-  return readOptionalConfigurableString(config, 'checkpoint_ns') ?? '';
-}
-
-function isLegacyCheckpoint(checkpoint: Checkpoint): boolean {
-  return checkpoint.v < 4;
-}
-
-async function metadataMatchesFilter(
-  row: CheckpointRow,
-  filter: CheckpointListOptions['filter'],
-  serde: SerializerProtocol,
-): Promise<boolean> {
-  if (!filter) {
-    return true;
-  }
-
-  const metadata = await readUnknown(serde, row.type, row.metadata);
-  return objectContainsFilter(metadata, filter);
-}
-
-function objectContainsFilter(value: unknown, filter: Record<string, unknown>): boolean {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  return Object.entries(filter).every(
-    ([key, expectedValue]) => Reflect.get(value, key) === expectedValue,
-  );
 }

@@ -1,7 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { CartSummary } from '../contracts/commerce.js';
-import type { HandoffRecord, HandoffStatus, HandoffStore } from './handoff-store.js';
+import {
+  type HandoffRecord,
+  type HandoffStatus,
+  type HandoffStore,
+  isResolvableHandoff,
+} from './handoff-store.js';
 
 export interface FileHandoffStoreOptions {
   readonly path: string;
@@ -51,7 +56,7 @@ export class FileHandoffStore implements HandoffStore {
     const records = this.#readRecords();
     const record = records.find((candidate) => candidate.handoffId === handoffId);
 
-    if (!record || !isResolvable(record, merchantId, shopwareSalesChannelId, this.#now())) {
+    if (!isResolvableHandoff(record, merchantId, shopwareSalesChannelId, this.#now())) {
       return undefined;
     }
 
@@ -113,20 +118,6 @@ function writeRecord(record: HandoffRecord): StoredHandoffRecord {
     ...record,
     expiresAt: record.expiresAt.toISOString(),
   };
-}
-
-function isResolvable(
-  record: HandoffRecord,
-  merchantId: string,
-  shopwareSalesChannelId: string,
-  now: Date,
-): boolean {
-  return (
-    record.status === 'ready_for_checkout' &&
-    record.merchantId === merchantId &&
-    record.shopwareSalesChannelId === shopwareSalesChannelId &&
-    record.expiresAt > now
-  );
 }
 
 function isStoredRecord(value: unknown): value is StoredHandoffRecord {

@@ -56,7 +56,7 @@ export class InMemoryHandoffStore implements HandoffStore {
   ): HandoffRecord | undefined {
     const record = this.#records.get(handoffId);
 
-    if (!record || !this.isResolvable(record, merchantId, shopwareSalesChannelId)) {
+    if (!isResolvableHandoff(record, merchantId, shopwareSalesChannelId, this.#now())) {
       return undefined;
     }
 
@@ -64,17 +64,18 @@ export class InMemoryHandoffStore implements HandoffStore {
 
     return record;
   }
+}
 
-  private isResolvable(
-    record: HandoffRecord,
-    merchantId: string,
-    shopwareSalesChannelId: string,
-  ): boolean {
-    return (
-      record.status === 'ready_for_checkout' &&
-      record.merchantId === merchantId &&
-      record.shopwareSalesChannelId === shopwareSalesChannelId &&
-      record.expiresAt > this.#now()
-    );
-  }
+export function isResolvableHandoff(
+  record: HandoffRecord | undefined,
+  merchantId: string,
+  shopwareSalesChannelId: string,
+  now: Date,
+): record is HandoffRecord {
+  return (
+    record?.status === 'ready_for_checkout' &&
+    record.merchantId === merchantId &&
+    record.shopwareSalesChannelId === shopwareSalesChannelId &&
+    record.expiresAt > now
+  );
 }

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { AgentSession, CommerceContext, PublicAgentSession } from '../contracts/session.js';
-import type { SessionStore } from './session-store.js';
+import { isSessionAvailable, type SessionStore, toPublicSession } from './session-store.js';
 
 export interface FileSessionStoreOptions {
   readonly path: string;
@@ -66,11 +66,7 @@ export class FileSessionStore implements SessionStore {
       (candidate) => candidate.agentSessionId === agentSessionId,
     );
 
-    if (!session || session.merchantId !== merchantId) {
-      return undefined;
-    }
-
-    if (session.expiresAt && session.expiresAt <= this.#now()) {
+    if (!isSessionAvailable(session, merchantId, this.#now())) {
       return undefined;
     }
 
@@ -85,20 +81,7 @@ export class FileSessionStore implements SessionStore {
       return undefined;
     }
 
-    const publicSession: PublicAgentSession = {
-      agentSessionId: session.agentSessionId,
-      merchantId: session.merchantId,
-      agentId: session.agentId,
-      channel: session.channel,
-      customerContext: session.customerContext,
-      createdAt: session.createdAt,
-    };
-
-    if (session.expiresAt) {
-      return { ...publicSession, expiresAt: session.expiresAt };
-    }
-
-    return publicSession;
+    return toPublicSession(session);
   }
 
   #readSessions(): AgentSession[] {

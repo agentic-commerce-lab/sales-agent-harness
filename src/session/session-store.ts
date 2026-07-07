@@ -51,7 +51,7 @@ export class InMemorySessionStore implements SessionStore {
   getSession(agentSessionId: string, merchantId: string): AgentSession | undefined {
     const session = this.#sessions.get(agentSessionId);
 
-    if (!this.isAvailableSession(session, merchantId)) {
+    if (!isSessionAvailable(session, merchantId, this.#clock.now())) {
       return undefined;
     }
 
@@ -67,28 +67,29 @@ export class InMemorySessionStore implements SessionStore {
 
     return toPublicSession(session);
   }
-
-  private isAvailableSession(
-    session: AgentSession | undefined,
-    merchantId: string,
-  ): session is AgentSession {
-    if (!session) {
-      return false;
-    }
-
-    if (session.merchantId !== merchantId) {
-      return false;
-    }
-
-    if (!session.expiresAt) {
-      return true;
-    }
-
-    return session.expiresAt > this.#clock.now();
-  }
 }
 
-function toPublicSession(session: AgentSession): PublicAgentSession {
+export function isSessionAvailable(
+  session: AgentSession | undefined,
+  merchantId: string,
+  now: Date,
+): session is AgentSession {
+  if (!session) {
+    return false;
+  }
+
+  if (session.merchantId !== merchantId) {
+    return false;
+  }
+
+  if (!session.expiresAt) {
+    return true;
+  }
+
+  return session.expiresAt > now;
+}
+
+export function toPublicSession(session: AgentSession): PublicAgentSession {
   const publicSession: PublicAgentSession = {
     agentSessionId: session.agentSessionId,
     merchantId: session.merchantId,
