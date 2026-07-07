@@ -392,11 +392,34 @@ describe('UcpAdapter total normalization', () => {
 
     const handoff = await adapter.prepareCheckoutHandoff({ cartId: 'cart-1' });
 
-    expect(handoff.summary.total).toEqual({ amount: 2490, currency: 'EUR' });
-    expect(handoff.summary.shipping).toEqual({ amount: 490, currency: 'EUR' });
-    expect(handoff.summary.items[0]?.unitPrice).toEqual({ amount: 2000, currency: 'EUR' });
-    expect(handoff.summary.items[0]?.totalPrice).toEqual({ amount: 2000, currency: 'EUR' });
+    expect(handoff.summary.total).toEqual({ amount: 28.7, currency: 'EUR' });
+    expect(handoff.summary.shipping).toEqual({ amount: 4.9, currency: 'EUR' });
+    expect(handoff.summary.tax).toEqual({ amount: 3.8, currency: 'EUR' });
+    expect(handoff.summary.items[0]?.unitPrice).toEqual({ amount: 20, currency: 'EUR' });
+    expect(handoff.summary.items[0]?.totalPrice).toEqual({ amount: 20, currency: 'EUR' });
     expect(handoff.continueUrl).toBe('https://shop.example.test/ucp/embedded/checkout/checkout-1');
+  });
+
+  test('converts UCP integer minor-unit prices to major currency units', async () => {
+    const adapter = new UcpAdapter({
+      client: {
+        ...createAdapterClient(),
+        searchProducts: async () => ({
+          products: [
+            { id: 'product-1', title: 'Rain Jacket', price: { amount: 10999, currency: 'EUR' } },
+          ],
+        }),
+      },
+    });
+
+    const search = await adapter.searchProducts({ query: 'jacket' });
+    const cart = await adapter.getCartSummary({ cartId: 'cart-1' });
+
+    expect(search.products[0]?.price).toEqual({ amount: 109.99, currency: 'EUR' });
+    expect(cart.cart.items[0]?.unitPrice).toEqual({ amount: 1.19, currency: 'EUR' });
+    expect(cart.cart.items[0]?.totalPrice).toEqual({ amount: 2.38, currency: 'EUR' });
+    expect(cart.cart.subtotal).toEqual({ amount: 2.38, currency: 'EUR' });
+    expect(cart.cart.total).toEqual({ amount: 2.38, currency: 'EUR' });
   });
 });
 
@@ -438,7 +461,8 @@ function createTotalsCart() {
     totals: [
       { type: 'subtotal', amount: 2000 },
       { type: 'fulfillment', amount: 490 },
-      { type: 'total', amount: 2490 },
+      { type: 'tax', amount: 380 },
+      { type: 'total', amount: 2870 },
     ],
   };
 }

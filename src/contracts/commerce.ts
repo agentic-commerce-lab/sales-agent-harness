@@ -1,4 +1,9 @@
 export interface Money {
+  /**
+   * Decimal amount in major currency units (109.99 means €109.99).
+   * Adapters must convert backend-specific formats (for example UCP integer
+   * minor units) before returning Money through this contract.
+   */
   readonly amount: number;
   readonly currency: string;
 }
@@ -40,8 +45,10 @@ export interface CartSummary {
   readonly items: readonly CartLineItem[];
   readonly subtotal: Money;
   readonly shipping?: Money;
+  readonly tax?: Money;
   readonly total: Money;
   readonly currency: string;
+  readonly deliveryEstimate?: string;
 }
 
 export interface SearchProductsInput {
@@ -102,6 +109,7 @@ export interface FulfillmentInput {
 
 export interface CompleteCheckoutInput {
   readonly checkoutId: string;
+  readonly idempotencyKey?: string | undefined;
   readonly buyer: BuyerInput;
   readonly fulfillment: FulfillmentInput;
   readonly executionContext?: CommerceExecutionContext;

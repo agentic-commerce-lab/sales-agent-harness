@@ -1,16 +1,27 @@
+import type { CartSummary } from '../contracts/commerce.js';
 import type { AgentHarnessConfig, HarnessCapability } from '../contracts/config.js';
 import type { AgentSession } from '../contracts/session.js';
 import type { AuditLogger } from '../observability/audit-log.js';
-import type { InMemorySessionStore } from '../session/session-store.js';
+import type { SessionStore } from '../session/session-store.js';
 import { recordHarnessAudit } from './harness-audit.js';
 import { recordExecutorResult } from './harness-executor-audit.js';
 import { executeHarnessRequest } from './harness-executor-run.js';
 import type { HarnessRequest, HarnessResponse } from './harness-types.js';
 
+export interface HarnessExecutorCartOptions<T> {
+  readonly maxItemQuantity: number;
+  /**
+   * Extracts the cart summary from a successful result so cart limits like
+   * maxCartValue can be enforced with the real total, which is only known
+   * after the adapter call.
+   */
+  readonly summaryFromValue?: (value: T) => CartSummary | undefined;
+}
+
 export interface HarnessExecutorOptions {
   readonly config: AgentHarnessConfig;
   readonly auditLogger: AuditLogger;
-  readonly sessionStore: InMemorySessionStore;
+  readonly sessionStore: SessionStore;
   readonly now: () => Date;
 }
 
@@ -19,7 +30,7 @@ export interface HarnessExecutor {
     capability: HarnessCapability,
     request: HarnessRequest,
     run: (session: AgentSession) => Promise<T>,
-    cart?: { readonly maxItemQuantity: number },
+    cart?: HarnessExecutorCartOptions<T>,
   ): Promise<HarnessResponse<T>>;
   recordAudit(
     session: AgentSession,

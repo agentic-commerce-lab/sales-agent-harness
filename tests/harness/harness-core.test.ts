@@ -9,6 +9,7 @@ import type {
 } from '../../src/contracts/commerce.js';
 import type { AgentHarnessConfig } from '../../src/contracts/config.js';
 import { InMemoryHandoffStore } from '../../src/handoff/handoff-store.js';
+import { InMemoryCheckoutIdempotencyStore } from '../../src/harness/checkout-idempotency-store.js';
 import { HarnessCore } from '../../src/harness/harness-core.js';
 import { InMemoryAuditLogger } from '../../src/observability/audit-log.js';
 import { InMemorySessionStore } from '../../src/session/session-store.js';
@@ -73,6 +74,56 @@ function createHarness(adapter: CommerceAdapter = createAdapter()) {
       auditLogger,
       handoffStore,
       sessionStore,
+      now: () => new Date('2026-06-30T12:00:00.000Z'),
+    }),
+  };
+}
+
+function createIdempotentHarness() {
+  let calls = 0;
+  const adapter = {
+    ...createAdapter(),
+    completeCheckout: async (): Promise<CompletedCheckoutResult> => {
+      calls += 1;
+      return {
+        summary: {
+          cartId: 'cart-1',
+          items: [],
+          subtotal: { amount: 119, currency: 'EUR' },
+          total: { amount: 119, currency: 'EUR' },
+          currency: 'EUR',
+        },
+        orderId: `order-${calls}`,
+        status: 'completed',
+      };
+    },
+  };
+  const sessionStore = new InMemorySessionStore();
+  sessionStore.createSession({
+    agentSessionId: 'session-1',
+    merchantId: 'merchant-1',
+    agentId: 'agent-1',
+    channel: 'a2a',
+    customerContext: {},
+    createdAt: new Date('2026-06-30T12:00:00.000Z'),
+  });
+  sessionStore.setCommerceContext('session-1', {
+    shopwareSalesChannelId: 'sales-channel-1',
+    shopwareContextToken: 'secret-context-token',
+  });
+
+  const auditLogger = new InMemoryAuditLogger();
+  const handoffStore = new InMemoryHandoffStore();
+
+  return {
+    adapterCalls: () => calls,
+    harness: new HarnessCore({
+      config: createConfig(),
+      adapter,
+      auditLogger,
+      handoffStore,
+      sessionStore,
+      checkoutIdempotencyStore: new InMemoryCheckoutIdempotencyStore(),
       now: () => new Date('2026-06-30T12:00:00.000Z'),
     }),
   };
@@ -198,6 +249,62 @@ describe('HarnessCore', () => {
   });
 });
 
+describe('HarnessCore cart value limits', () => {
+  test('blocks cart results whose real total exceeds the configured max cart value', async () => {
+    const { harness, auditLogger } = createHarness(createExpensiveCartAdapter());
+
+    const result = await harness.createCart({
+      agentSessionId: 'session-1',
+      items: [{ productId: 'product-1', quantity: 1 }],
+    });
+
+    expect(result.status).toBe('blocked');
+    expect(result.value).toBeUndefined();
+    expect(result.policyDecision?.reason).toBe('cart_value_limit_exceeded');
+    expect(auditLogger.events.some((event) => event.type === 'blocked_action')).toBe(true);
+  });
+
+  test('blocks checkout handoffs for carts above the configured max cart value', async () => {
+    const { harness } = createHarness(createExpensiveCartAdapter());
+
+    const result = await harness.prepareCheckoutHandoff({
+      agentSessionId: 'session-1',
+      cartId: 'cart-1',
+    });
+
+    expect(result.status).toBe('blocked');
+    expect(result.value).toBeUndefined();
+    expect(result.policyDecision?.reason).toBe('cart_value_limit_exceeded');
+  });
+});
+
+function createExpensiveCartAdapter(): CommerceAdapter {
+  const cartResult: CartResult = {
+    dataSource: 'shopware_store_api',
+    cart: {
+      cartId: 'cart-1',
+      items: [
+        {
+          productId: 'product-1',
+          label: 'Gold Jacket',
+          quantity: 1,
+          unitPrice: { amount: 1500, currency: 'EUR' },
+          totalPrice: { amount: 1500, currency: 'EUR' },
+        },
+      ],
+      subtotal: { amount: 1500, currency: 'EUR' },
+      total: { amount: 1500, currency: 'EUR' },
+      currency: 'EUR',
+    },
+  };
+
+  return {
+    ...createAdapter(),
+    createCart: async (): Promise<CartResult> => cartResult,
+    getCartSummary: async (): Promise<CartResult> => cartResult,
+  };
+}
+
 describe('HarnessCore checkout completion', () => {
   test('blocks checkout completion when the policy disables automated selling', async () => {
     const { adapterCalls, harness } = createCheckoutCompletionDisabledHarness();
@@ -228,6 +335,24 @@ describe('HarnessCore checkout completion', () => {
     expect(result.value?.orderId).toBe('order-1');
     expect(JSON.stringify(result)).not.toContain('secret-context-token');
     expect(auditLogger.events.map((event) => event.type)).toContain('checkout_completion');
+  });
+
+  test('returns stored checkout completion for repeated idempotency keys', async () => {
+    const { adapterCalls, harness } = createIdempotentHarness();
+    const input = {
+      agentSessionId: 'session-1',
+      checkoutId: 'checkout-1',
+      idempotencyKey: 'checkout-key-1',
+      buyer: createBuyer(),
+      fulfillment: createFulfillment(),
+    };
+
+    const first = await harness.completeCheckout(input);
+    const second = await harness.completeCheckout(input);
+
+    expect(first.value?.orderId).toBe('order-1');
+    expect(second.value?.orderId).toBe('order-1');
+    expect(adapterCalls()).toBe(1);
   });
 });
 

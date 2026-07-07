@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import type { CartSummary } from '../contracts/commerce.js';
-import type { HandoffRecord, InMemoryHandoffStore } from './handoff-store.js';
+import type { HandoffRecord, HandoffStore } from './handoff-store.js';
 
 export interface CheckoutHandoff {
   readonly handoffId: string;
@@ -11,7 +11,7 @@ export interface CheckoutHandoff {
 }
 
 export interface PrepareCheckoutHandoffInput {
-  readonly store: InMemoryHandoffStore;
+  readonly store: HandoffStore;
   readonly agentSessionId: string;
   readonly merchantId: string;
   readonly shopwareSalesChannelId: string;

@@ -30,7 +30,21 @@ function parseDeliveries(payload: unknown): readonly ShopwareDelivery[] {
 
   return payload.map((delivery) => ({
     shippingCosts: parsePrice(readRecord(delivery).shippingCosts),
+    deliveryDate: parseDeliveryDate(readRecord(delivery).deliveryDate),
   }));
+}
+
+function parseDeliveryDate(payload: unknown): ShopwareDelivery['deliveryDate'] {
+  const record = readOptionalRecord(payload);
+
+  if (!record) {
+    return undefined;
+  }
+
+  return {
+    earliest: readOptionalString(record.earliest),
+    latest: readOptionalString(record.latest),
+  };
 }
 
 function parseLineItems(payload: unknown): readonly ShopwareLineItem[] {
@@ -62,6 +76,7 @@ function parseCartPrice(payload: unknown): ShopwareCart['price'] {
 
   return {
     positionPrice: readOptionalNumber(record.positionPrice),
+    netPrice: readOptionalNumber(record.netPrice),
     totalPrice: readOptionalNumber(record.totalPrice),
     currency: readOptionalString(record.currency),
   };

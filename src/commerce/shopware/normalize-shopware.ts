@@ -35,7 +35,7 @@ function createProductOptionalFields(product: ShopwareProduct): Partial<ProductS
 
 export function normalizeShopwareProductDetails(
   product: ShopwareProduct,
-  confidentialFields: readonly string[] = [],
+  confidentialFields: readonly string[],
 ): ProductDetails {
   return {
     ...normalizeShopwareProduct(product),
@@ -46,17 +46,50 @@ export function normalizeShopwareProductDetails(
 
 export function normalizeShopwareCart(cart: ShopwareCart): CartSummary {
   const currency = cart.price?.currency ?? defaultCurrency;
-  const items = cart.lineItems?.map((item) => normalizeLineItem(item, currency)) ?? [];
-  const shipping = normalizeShippingCosts(cart, currency);
 
   return {
     cartId: 'cart',
-    items,
+    items: cart.lineItems?.map((item) => normalizeLineItem(item, currency)) ?? [],
     subtotal: normalizeRequiredPrice(cart.price?.positionPrice ?? 0, currency),
-    ...(shipping ? { shipping } : {}),
+    ...createOptionalCartFields(cart, currency),
     total: normalizeRequiredPrice(cart.price?.totalPrice ?? 0, currency),
     currency,
   };
+}
+
+function createOptionalCartFields(cart: ShopwareCart, currency: string): Partial<CartSummary> {
+  const shipping = normalizeShippingCosts(cart, currency);
+  const tax = normalizeTax(cart, currency);
+  const deliveryEstimate = normalizeCartDeliveryEstimate(cart);
+
+  return {
+    ...(shipping ? { shipping } : {}),
+    ...(tax ? { tax } : {}),
+    ...(deliveryEstimate ? { deliveryEstimate } : {}),
+  };
+}
+
+function normalizeTax(cart: ShopwareCart, currency: string): Money | undefined {
+  const netPrice = cart.price?.netPrice;
+  const totalPrice = cart.price?.totalPrice;
+
+  if (netPrice === undefined || totalPrice === undefined) {
+    return undefined;
+  }
+
+  return normalizeRequiredPrice(totalPrice - netPrice, currency);
+}
+
+function normalizeCartDeliveryEstimate(cart: ShopwareCart): string | undefined {
+  const deliveryDate = cart.deliveries?.find((delivery) => delivery.deliveryDate)?.deliveryDate;
+  const earliest = deliveryDate?.earliest;
+  const latest = deliveryDate?.latest;
+
+  if (!earliest || !latest) {
+    return undefined;
+  }
+
+  return `${earliest.slice(0, 10)} – ${latest.slice(0, 10)}`;
 }
 
 function normalizeShippingCosts(cart: ShopwareCart, currency: string): Money | undefined {

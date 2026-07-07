@@ -9,6 +9,41 @@ import type { UcpCart, UcpLineItem, UcpMoney, UcpProduct } from './ucp-types.js'
 
 const defaultCurrency = 'EUR';
 
+// UCP money amounts are integers in minor currency units (for example cents),
+// while the harness Money contract uses decimal major units like the Shopware
+// Store API adapter (10999 from UCP and 109.99 from Shopware are the same price).
+const zeroDecimalCurrencies = new Set([
+  'BIF',
+  'CLP',
+  'DJF',
+  'GNF',
+  'JPY',
+  'KMF',
+  'KRW',
+  'MGA',
+  'PYG',
+  'RWF',
+  'UGX',
+  'VND',
+  'VUV',
+  'XAF',
+  'XOF',
+  'XPF',
+]);
+
+function fromMinorUnits(amount: number, currency: string): Money {
+  const factor = zeroDecimalCurrencies.has(currency.toUpperCase()) ? 1 : 100;
+  return { amount: amount / factor, currency };
+}
+
+function fromUcpMoney(money: UcpMoney): Money {
+  return fromMinorUnits(money.amount, money.currency);
+}
+
+function fromOptionalUcpMoney(money: UcpMoney | undefined): Money | undefined {
+  return money ? fromUcpMoney(money) : undefined;
+}
+
 export function normalizeUcpProduct(product: UcpProduct): ProductSummary {
   const price = normalizeProductPrice(product);
   const deliveryEstimate = product.deliveryEstimate ?? product.delivery_estimate;
@@ -43,6 +78,7 @@ export function normalizeUcpCart(cart: UcpCart): CartSummary {
     items: lineItems.map((item) => normalizeLineItem(item, currency)),
     subtotal: money.subtotal,
     ...(money.shipping ? { shipping: money.shipping } : {}),
+    ...(money.tax ? { tax: money.tax } : {}),
     total: money.total,
     currency,
   };
@@ -64,14 +100,14 @@ export function readUcpContinueUrl(checkout: UcpCart): string | undefined {
 
 function normalizeProductPrice(product: UcpProduct): Money | undefined {
   if (typeof product.price === 'number') {
-    return normalizeRequiredMoney(product.price, defaultCurrency);
+    return fromMinorUnits(product.price, defaultCurrency);
   }
 
   if (product.price) {
-    return product.price;
+    return fromUcpMoney(product.price);
   }
 
-  return product.priceRange?.min ?? product.price_range?.min;
+  return fromOptionalUcpMoney(product.priceRange?.min ?? product.price_range?.min);
 }
 
 function normalizeLineItem(item: UcpLineItem, cartCurrency: string): CartLineItem {
@@ -100,15 +136,12 @@ function normalizeCartMoney(cart: UcpCart, currency: string) {
   const summary = cart.money_summary ?? cart.moneySummary;
 
   return {
-    subtotal:
-      summary?.subtotal ??
-      totalByType(cart.totals, 'subtotal', currency) ??
-      normalizeRequiredMoney(0, currency),
+    subtotal: fromOptionalUcpMoney(summary?.subtotal) ??
+      totalByType(cart.totals, 'subtotal', currency) ?? { amount: 0, currency },
     shipping: normalizeCartShipping(cart, summary, currency),
-    total:
-      summary?.total ??
-      totalByType(cart.totals, 'total', currency) ??
-      normalizeRequiredMoney(0, currency),
+    tax: fromOptionalUcpMoney(summary?.tax) ?? totalByType(cart.totals, 'tax', currency),
+    total: fromOptionalUcpMoney(summary?.total) ??
+      totalByType(cart.totals, 'total', currency) ?? { amount: 0, currency },
   };
 }
 
@@ -118,7 +151,7 @@ function normalizeCartShipping(
   currency: string,
 ): Money | undefined {
   return (
-    summary?.fulfillment ??
+    fromOptionalUcpMoney(summary?.fulfillment) ??
     totalByType(cart.totals, 'fulfillment', currency) ??
     totalByType(cart.totals, 'shipping', currency)
   );
@@ -128,17 +161,20 @@ function lineItemUnitPrice(item: UcpLineItem, cartCurrency: string): Money {
   const productPrice = normalizeProductPrice(item.item ?? { id: item.id ?? 'unknown-product' });
 
   return (
-    item.unit_price ?? item.unitPrice ?? productPrice ?? normalizeRequiredMoney(0, cartCurrency)
+    fromOptionalUcpMoney(item.unit_price ?? item.unitPrice) ??
+    productPrice ?? { amount: 0, currency: cartCurrency }
   );
 }
 
 function lineItemTotalPrice(item: UcpLineItem, unitPrice: Money): Money {
   return (
-    item.total_price ??
-    item.totalPrice ??
+    fromOptionalUcpMoney(item.total_price ?? item.totalPrice) ??
     totalByType(item.totals, 'total', unitPrice.currency) ??
-    totalByType(item.totals, 'subtotal', unitPrice.currency) ??
-    normalizeRequiredMoney(unitPrice.amount * item.quantity, unitPrice.currency)
+    totalByType(item.totals, 'subtotal', unitPrice.currency) ?? {
+      // unitPrice is already in major units here, so no conversion.
+      amount: unitPrice.amount * item.quantity,
+      currency: unitPrice.currency,
+    }
   );
 }
 
@@ -158,9 +194,5 @@ function totalByType(
     return undefined;
   }
 
-  return normalizeRequiredMoney(total.amount, total.currency ?? fallbackCurrency);
-}
-
-function normalizeRequiredMoney(amount: number, currency: string): UcpMoney {
-  return { amount, currency };
+  return fromMinorUnits(total.amount, total.currency ?? fallbackCurrency);
 }

@@ -70,7 +70,8 @@ describe('createExecutableToolRegistry', () => {
       'createCart',
       'completeCheckout',
     ]);
-    expect(searchProducts?.description).toContain('trusted merchant product data');
+    expect(searchProducts?.description).toContain('only products available from the merchant shop');
+    expect(searchProducts?.description).toContain('Do not use this tool to infer');
     expect(searchProducts?.schema.safeParse({ query: 'jacket', limit: 2 }).success).toBe(true);
     expect(
       completeCheckout?.schema.safeParse({

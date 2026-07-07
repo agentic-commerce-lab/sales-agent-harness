@@ -66,10 +66,15 @@ function createRawCart() {
           totalPrice: 4.9,
           currency: 'EUR',
         },
+        deliveryDate: {
+          earliest: '2026-07-10T08:00:00.000+00:00',
+          latest: '2026-07-12T08:00:00.000+00:00',
+        },
       },
     ],
     price: {
       positionPrice: 238,
+      netPrice: 200,
       totalPrice: 238,
       currency: 'EUR',
     },
@@ -128,6 +133,15 @@ describe('ShopwareAdapter', () => {
     const summary = await adapter.getCartSummary({ cartId: 'cart-1' });
 
     expect(summary.cart.shipping).toEqual({ amount: 4.9, currency: 'EUR' });
+  });
+
+  test('surfaces tax and delivery estimate from cart price and deliveries', async () => {
+    const adapter = new ShopwareAdapter({ client: createClient() });
+
+    const summary = await adapter.getCartSummary({ cartId: 'cart-1' });
+
+    expect(summary.cart.tax).toEqual({ amount: 38, currency: 'EUR' });
+    expect(summary.cart.deliveryEstimate).toBe('2026-07-10 – 2026-07-12');
   });
 
   test('wraps Store API failures with cause', async () => {

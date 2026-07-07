@@ -50,6 +50,7 @@ export interface HarnessToolExecutor {
   completeCheckout(input: {
     readonly agentSessionId: string;
     readonly checkoutId: string;
+    readonly idempotencyKey?: string | undefined;
     readonly buyer: {
       readonly email: string;
       readonly firstName?: string | undefined;

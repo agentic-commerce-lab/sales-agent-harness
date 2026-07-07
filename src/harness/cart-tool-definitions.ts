@@ -93,6 +93,7 @@ export function createCompleteCheckoutTool(
 ): ExecutableHarnessToolDefinition {
   const schema = z.object({
     checkoutId: z.string(),
+    idempotencyKey: z.string().min(1).optional(),
     explicitBuyerConfirmation: z.literal(true),
     buyer: z.object({
       email: z.email(),
@@ -122,6 +123,7 @@ export function createCompleteCheckoutTool(
       return harness.completeCheckout({
         agentSessionId: context.agentSessionId,
         checkoutId: parsed.checkoutId,
+        ...(parsed.idempotencyKey ? { idempotencyKey: parsed.idempotencyKey } : {}),
         buyer: parsed.buyer,
         fulfillment: parsed.fulfillment,
       });

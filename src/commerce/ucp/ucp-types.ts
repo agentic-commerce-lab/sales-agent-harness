@@ -63,6 +63,7 @@ export interface UcpCart {
 export interface UcpMoneySummary {
   readonly subtotal?: UcpMoney | undefined;
   readonly fulfillment?: UcpMoney | undefined;
+  readonly tax?: UcpMoney | undefined;
   readonly total?: UcpMoney | undefined;
 }
 

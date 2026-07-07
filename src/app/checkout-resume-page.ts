@@ -1,9 +1,15 @@
 import type { CheckoutResumeConfig } from './http-handler-types.js';
 
+// JSON.stringify alone is unsafe inside an inline <script>: it does not escape
+// "<", so a value containing "</script>" would terminate the script element.
+function inlineScriptString(value: string): string {
+  return JSON.stringify(value).replaceAll('<', '\\u003c');
+}
+
 export function checkoutResumeHtml(token: string, config: CheckoutResumeConfig): string {
-  const baseUrl = JSON.stringify(config.shopwareBaseUrl);
-  const accessKey = JSON.stringify(config.shopwareAccessKey);
-  const contextToken = JSON.stringify(token);
+  const baseUrl = inlineScriptString(config.shopwareBaseUrl);
+  const accessKey = inlineScriptString(config.shopwareAccessKey);
+  const contextToken = inlineScriptString(token);
 
   return `<!doctype html>
 <html lang="en">
@@ -86,6 +92,7 @@ function checkoutPageScript(baseUrl: string, accessKey: string, contextToken: st
   const KEY  = ${accessKey};
   const TOKEN = ${contextToken};
   const headers = (extra = {}) => ({ 'sw-access-key': KEY, 'sw-context-token': TOKEN, 'content-type': 'application/json', ...extra });
+  const esc = (value) => String(value).replace(/[&<>"']/g, (c) => '&#' + c.charCodeAt(0) + ';');
   ${cartScriptBody()}
   ${orderScriptBody()}
 })();
@@ -110,7 +117,7 @@ function cartScriptBody(): string {
       const li = document.createElement('li');
       const qty = item.quantity || 1;
       const price = item.price?.totalPrice ?? 0;
-      li.innerHTML = \`<span><span class="qty">\${qty}×</span> \${item.label || item.id}</span><span>\${formatPrice(price)}</span>\`;
+      li.innerHTML = \`<span><span class="qty">\${esc(qty)}×</span> \${esc(item.label || item.id)}</span><span>\${esc(formatPrice(price))}</span>\`;
       ul.appendChild(li);
     });
     const p = cart.price || {};
@@ -120,7 +127,7 @@ function cartScriptBody(): string {
       <div class="row total"><span>Total</span><span>\${formatPrice(p.totalPrice || 0)}</span></div>
     \`;
   } catch (e) {
-    document.getElementById('line-items').innerHTML = '<li style="color:#c00">Could not load cart: ' + e.message + '</li>';
+    document.getElementById('line-items').innerHTML = '<li style="color:#c00">Could not load cart: ' + esc(e.message) + '</li>';
   }`;
 }
 
@@ -157,7 +164,7 @@ function orderScriptBody(): string {
       if (!orderRes.ok) throw new Error(order.errors?.[0]?.detail || JSON.stringify(order));
       document.getElementById('checkout-form').style.display = 'none';
       document.getElementById('order-result').innerHTML =
-        \`<div class="status success">Order placed! Order number: <strong>\${order.orderNumber || order.id}</strong></div>\`;
+        \`<div class="status success">Order placed! Order number: <strong>\${esc(order.orderNumber || order.id)}</strong></div>\`;
     } catch (err) {
       status.textContent = err.message; status.className = 'status error';
       btn.disabled = false; btn.textContent = 'Place order';

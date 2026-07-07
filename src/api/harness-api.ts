@@ -44,6 +44,7 @@ export type CommerceApiRequest =
       readonly capability: 'completeCheckout';
       readonly agentSessionId: string;
       readonly checkoutId: string;
+      readonly idempotencyKey?: string | undefined;
       readonly buyer: {
         readonly email: string;
         readonly firstName?: string | undefined;

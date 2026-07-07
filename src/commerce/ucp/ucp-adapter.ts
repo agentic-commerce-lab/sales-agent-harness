@@ -33,7 +33,6 @@ export class UcpAdapter implements CommerceAdapter {
     this.#client = options.client;
   }
 
-  // fallow-ignore-next-line unused-class-member
   async searchProducts(input: SearchProductsInput): Promise<ProductSearchResult> {
     try {
       const result = await this.#client.searchProducts(input);
@@ -88,7 +87,6 @@ export class UcpAdapter implements CommerceAdapter {
     }
   }
 
-  // fallow-ignore-next-line unused-class-member
   async getCartSummary(input: { readonly cartId: string }): Promise<CartResult> {
     try {
       const cart = await this.#client.getCart(input);
