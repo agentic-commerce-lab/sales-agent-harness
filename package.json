@@ -4,6 +4,8 @@
   "type": "module",
   "private": true,
   "description": "Merchant-side seller agent harness for controlled agentic commerce experiments.",
+  "license": "MIT",
+  "author": "shopware AG",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -58,6 +60,7 @@
   },
   "dependencies": {
     "@langchain/core": "^1.2.1",
+    "@langchain/langgraph-checkpoint": "^1.1.3",
     "@langchain/openai": "^1.5.3",
     "deepagents": "^1.10.5",
     "zod": "^4.4.3"

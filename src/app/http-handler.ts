@@ -56,8 +56,10 @@ async function handleRequest(
   const url = new URL(request.url);
 
   if (request.method !== 'GET') {
-    const body = await request.clone().text();
-    log(`→ ${request.method} ${url.pathname} ${body}`);
+    // Bodies can contain buyer PII (email, phone, shipping address) and chat
+    // content, so they are only logged when explicitly enabled for debugging.
+    const body = input.debugLogRequestBodies ? ` ${await request.clone().text()}` : '';
+    log(`→ ${request.method} ${url.pathname}${body}`);
   }
 
   try {
@@ -90,7 +92,7 @@ function handleGetRequest(input: CreateSalesAgentHttpHandlerInput, url: URL): Re
   }
 
   if (url.pathname === '/.well-known/agent-card.json') {
-    return a2aResponse(createA2aAgentCard(url.origin));
+    return a2aResponse(createA2aAgentCard(url.origin, input.agentConfig));
   }
 
   if (url.pathname === '/examples/customer-ui') {
@@ -165,7 +167,8 @@ async function handleJsonRpcRequest(app: SalesAgentHttpApp, body: unknown): Prom
     }
   } catch (error) {
     logError('JSONRPC error', error);
-    const message = error instanceof Error ? error.message : 'Internal error';
+    const message =
+      error instanceof Error && isInputError(error) ? error.message : 'Internal error';
     const code = isInputError(error) ? -32602 : -32603;
     return jsonResponse(
       { jsonrpc: '2.0', id: rpc.id, error: { code, message } },

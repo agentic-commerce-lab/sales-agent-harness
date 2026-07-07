@@ -17,7 +17,18 @@ export interface HandoffStoreOptions {
   readonly now?: () => Date;
 }
 
-export class InMemoryHandoffStore {
+export interface HandoffStore {
+  readonly records: readonly HandoffRecord[];
+  save(record: HandoffRecord): void;
+  currentTime(): Date;
+  resolve(
+    handoffId: string,
+    merchantId: string,
+    shopwareSalesChannelId: string,
+  ): HandoffRecord | undefined;
+}
+
+export class InMemoryHandoffStore implements HandoffStore {
   readonly #records = new Map<string, HandoffRecord>();
   readonly #now: () => Date;
 

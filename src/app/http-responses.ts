@@ -32,12 +32,14 @@ export function htmlResponse(body: string): Response {
   });
 }
 
+// Only input-validation messages are safe to echo back; adapter/config/fs
+// errors can contain internal URLs and file paths.
 export function toErrorResponse(error: unknown): { readonly error: string } {
-  if (error instanceof Error) {
+  if (error instanceof Error && isInputError(error)) {
     return { error: error.message };
   }
 
-  return { error: 'Unexpected error' };
+  return { error: 'Internal server error' };
 }
 
 export function isInputError(error: unknown): boolean {

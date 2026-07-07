@@ -2,7 +2,7 @@ import { createConfiguredSalesAgentHarnessApp } from './app/bootstrap.js';
 import { createSalesAgentHttpHandler } from './app/http-handler.js';
 import { createUcpPlatformProfile } from './commerce/ucp/ucp-platform-profile.js';
 
-const { app, environment } = await createConfiguredSalesAgentHarnessApp();
+const { app, agentConfig, environment } = await createConfiguredSalesAgentHarnessApp();
 
 const ucpPlatformProfile = (() => {
   const {
@@ -27,6 +27,8 @@ const ucpPlatformProfile = (() => {
 
 const handler = createSalesAgentHttpHandler({
   app,
+  agentConfig,
+  debugLogRequestBodies: environment.debugLogRequestBodies,
   ...(ucpPlatformProfile ? { ucpPlatformProfile } : {}),
   ...(environment.commerce.storeApiAccessKey
     ? {

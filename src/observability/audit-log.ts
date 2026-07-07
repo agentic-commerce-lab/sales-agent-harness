@@ -32,6 +32,7 @@ export interface AuditEvent {
 }
 
 export interface AuditLogger {
+  readonly events: readonly AuditEvent[];
   record(event: AuditEvent): void;
 }
 

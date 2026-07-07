@@ -1,7 +1,16 @@
 import { expect, test } from 'bun:test';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type {
+  BaseCheckpointSaver,
+  Checkpoint,
+  CheckpointMetadata,
+} from '@langchain/langgraph-checkpoint';
 
 import { createRunnableSalesAgentHarnessApp } from '../../src/app/bootstrap.js';
 import type { AgentHarnessConfig } from '../../src/contracts/config.js';
+import type { DeepAgentFactoryParams } from '../../src/runtime/langgraph/langgraph-types.js';
 
 const cartFetch = Object.assign(
   async () =>
@@ -29,8 +38,12 @@ test('createRunnableSalesAgentHarnessApp uses the Shopware environment URL for c
       agentConfigPath: 'config/agents/demo-sales-agent.json',
       host: '127.0.0.1',
       port: 3000,
+      debugLogRequestBodies: false,
       runtimeProvider: 'deep_agents',
       commerceAdapterProvider: 'shopware',
+      storage: {
+        provider: 'memory',
+      },
       runtime: {
         apiKey: 'test-key',
         modelName: 'gpt-5-mini',
@@ -70,8 +83,12 @@ test('createRunnableSalesAgentHarnessApp can use Agentic Commerce UCP checkout h
       agentConfigPath: 'config/agents/demo-sales-agent.json',
       host: '127.0.0.1',
       port: 3000,
+      debugLogRequestBodies: false,
       runtimeProvider: 'deep_agents',
       commerceAdapterProvider: 'ucp',
+      storage: {
+        provider: 'memory',
+      },
       runtime: {
         apiKey: 'test-key',
         modelName: 'gpt-5-mini',
@@ -103,6 +120,160 @@ test('createRunnableSalesAgentHarnessApp can use Agentic Commerce UCP checkout h
     'https://shop.example.test/ucp/embedded/checkout/checkout-1',
   );
   expect(JSON.stringify(handoff.value)).not.toContain('secret-context-token');
+});
+
+test('createRunnableSalesAgentHarnessApp can use SQLite app storage', () => {
+  const sqlitePath = tempDatabasePath();
+  const app = createRunnableSalesAgentHarnessApp({
+    agentConfig: createConfig(),
+    environment: {
+      agentConfigPath: 'config/agents/demo-sales-agent.json',
+      host: '127.0.0.1',
+      port: 3000,
+      debugLogRequestBodies: false,
+      runtimeProvider: 'deep_agents',
+      commerceAdapterProvider: 'shopware',
+      storage: {
+        provider: 'sqlite',
+        sqlitePath,
+      },
+      runtime: {
+        apiKey: 'test-key',
+        modelName: 'gpt-5-mini',
+      },
+      commerce: {
+        baseUrl: 'https://shop.example.test',
+        storeApiAccessKey: 'store-api-key',
+        defaultSalesChannelId: 'sales-channel-1',
+      },
+    },
+    fetchImplementation: cartFetch,
+  });
+
+  const session = app.createSession({
+    channel: 'customer_ui',
+    shopwareContextToken: 'secret-context-token',
+  });
+  const reopenedApp = createRunnableSalesAgentHarnessApp({
+    agentConfig: createConfig(),
+    environment: {
+      agentConfigPath: 'config/agents/demo-sales-agent.json',
+      host: '127.0.0.1',
+      port: 3000,
+      debugLogRequestBodies: false,
+      runtimeProvider: 'deep_agents',
+      commerceAdapterProvider: 'shopware',
+      storage: {
+        provider: 'sqlite',
+        sqlitePath,
+      },
+      runtime: {
+        apiKey: 'test-key',
+        modelName: 'gpt-5-mini',
+      },
+      commerce: {
+        baseUrl: 'https://shop.example.test',
+        storeApiAccessKey: 'store-api-key',
+        defaultSalesChannelId: 'sales-channel-1',
+      },
+    },
+    fetchImplementation: cartFetch,
+  });
+
+  expect(
+    reopenedApp.sessionStore.getSession(session.agentSessionId, 'merchant-1')?.commerceContext
+      ?.shopwareContextToken,
+  ).toBe('secret-context-token');
+});
+
+test('createRunnableSalesAgentHarnessApp wires LangGraph checkpointing to SQLite storage', () => {
+  const sqlitePath = tempDatabasePath();
+  const observed: { checkpointer?: DeepAgentFactoryParams['checkpointer'] } = {};
+
+  createRunnableSalesAgentHarnessApp({
+    agentConfig: createConfig(),
+    environment: {
+      agentConfigPath: 'config/agents/demo-sales-agent.json',
+      host: '127.0.0.1',
+      port: 3000,
+      debugLogRequestBodies: false,
+      runtimeProvider: 'deep_agents',
+      commerceAdapterProvider: 'shopware',
+      storage: {
+        provider: 'sqlite',
+        sqlitePath,
+      },
+      runtime: {
+        apiKey: 'test-key',
+        modelName: 'gpt-5-mini',
+      },
+      commerce: {
+        baseUrl: 'https://shop.example.test',
+        storeApiAccessKey: 'store-api-key',
+        defaultSalesChannelId: 'sales-channel-1',
+      },
+    },
+    fetchImplementation: cartFetch,
+    createDeepAgent: (params) => {
+      observed.checkpointer = params.checkpointer;
+      return {
+        invoke: async () => ({ messages: [] }),
+      };
+    },
+  });
+
+  expect(observed.checkpointer).toBeDefined();
+});
+
+test('createRunnableSalesAgentHarnessApp preserves LangGraph checkpoints across SQLite app recreation', async () => {
+  const sqlitePath = tempDatabasePath();
+  const checkpoint = createCheckpoint('checkpoint-1');
+  let restoredCheckpointId: string | undefined;
+  const firstApp = createRunnableSalesAgentHarnessApp({
+    agentConfig: createChatConfig(),
+    environment: createSqliteEnvironment(sqlitePath),
+    fetchImplementation: cartFetch,
+    createDeepAgent: (params) => ({
+      invoke: async (_input, options) => {
+        const checkpointer = expectCheckpointSaver(params.checkpointer);
+
+        await checkpointer.put(
+          { configurable: { thread_id: options?.configurable.thread_id ?? 'session-1' } },
+          checkpoint,
+          createCheckpointMetadata(),
+          {},
+        );
+        return { messages: [] };
+      },
+    }),
+  });
+  const session = firstApp.createSession({
+    channel: 'customer_ui',
+    shopwareContextToken: 'secret-context-token',
+  });
+
+  await firstApp.chat({ agentSessionId: session.agentSessionId, message: 'Remember this cart' });
+
+  const secondApp = createRunnableSalesAgentHarnessApp({
+    agentConfig: createChatConfig(),
+    environment: createSqliteEnvironment(sqlitePath),
+    fetchImplementation: cartFetch,
+    createDeepAgent: (params) => ({
+      invoke: async (_input, options) => {
+        const checkpointer = expectCheckpointSaver(params.checkpointer);
+
+        const tuple = await checkpointer.getTuple({
+          configurable: { thread_id: options?.configurable.thread_id ?? 'session-1' },
+        });
+        restoredCheckpointId = tuple?.checkpoint.id;
+        return { messages: [] };
+      },
+    }),
+  });
+
+  await secondApp.chat({ agentSessionId: session.agentSessionId, message: 'Resume' });
+
+  expect(restoredCheckpointId).toBe('checkpoint-1');
 });
 
 const ucpFetch = Object.assign(
@@ -179,6 +350,66 @@ function createConfig(): AgentHarnessConfig {
   };
 }
 
+function createChatConfig(): AgentHarnessConfig {
+  return {
+    ...createConfig(),
+    enabledCapabilities: ['searchProducts'],
+  };
+}
+
+function createSqliteEnvironment(sqlitePath: string) {
+  return {
+    agentConfigPath: 'config/agents/demo-sales-agent.json',
+    host: '127.0.0.1',
+    port: 3000,
+    debugLogRequestBodies: false,
+    runtimeProvider: 'deep_agents' as const,
+    commerceAdapterProvider: 'shopware' as const,
+    storage: {
+      provider: 'sqlite' as const,
+      sqlitePath,
+    },
+    runtime: {
+      apiKey: 'test-key',
+      modelName: 'gpt-5-mini',
+    },
+    commerce: {
+      baseUrl: 'https://shop.example.test',
+      storeApiAccessKey: 'store-api-key',
+      defaultSalesChannelId: 'sales-channel-1',
+    },
+  };
+}
+
+function createCheckpoint(id: string): Checkpoint {
+  return {
+    v: 4,
+    id,
+    ts: '2026-07-06T00:00:00.000Z',
+    channel_values: { messages: ['remembered'] },
+    channel_versions: { messages: 1 },
+    versions_seen: {},
+  };
+}
+
+function createCheckpointMetadata(): CheckpointMetadata {
+  return {
+    source: 'loop',
+    step: 1,
+    parents: {},
+  };
+}
+
+function expectCheckpointSaver(
+  checkpointer: DeepAgentFactoryParams['checkpointer'],
+): BaseCheckpointSaver {
+  if (!checkpointer || checkpointer === true) {
+    throw new Error('Expected checkpoint saver');
+  }
+
+  return checkpointer;
+}
+
 function createUcpCart() {
   return {
     id: 'cart',
@@ -193,4 +424,8 @@ function createUcpCart() {
 
 function requestUrl(input: string | URL | Request): string {
   return input instanceof Request ? input.url : input.toString();
+}
+
+function tempDatabasePath(): string {
+  return join(mkdtempSync(join(tmpdir(), 'sales-agent-harness-bootstrap-')), 'store.sqlite');
 }

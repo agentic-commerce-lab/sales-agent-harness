@@ -82,6 +82,7 @@ const commerceRequestSchema = z.discriminatedUnion('capability', [
     capability: z.literal('completeCheckout'),
     agentSessionId: z.string().min(1),
     checkoutId: z.string().min(1),
+    idempotencyKey: z.string().min(1).optional(),
     buyer: buyerSchema,
     fulfillment: fulfillmentSchema,
   }),

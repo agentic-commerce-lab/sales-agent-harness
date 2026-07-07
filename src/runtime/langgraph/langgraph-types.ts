@@ -19,21 +19,45 @@ export interface LangGraphRuntimeResponse {
   readonly toolCalls: readonly string[];
 }
 
+export interface LangGraphAgentRun {
+  readonly runId: string;
+  readonly agentSessionId: string;
+  readonly status: 'running' | 'completed' | 'failed' | 'cancelled';
+  readonly input: LangGraphRuntimeInput;
+  readonly response?: LangGraphRuntimeResponse | undefined;
+  readonly error?: Error | undefined;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+export interface LangGraphAgentRunStore {
+  get(runId: string): LangGraphAgentRun | undefined;
+  save(run: LangGraphAgentRun): void;
+}
+
 export interface DeepAgentInvokeInput {
   readonly messages: BaseMessageLike[];
   readonly agentSessionId: string;
 }
 
+export interface DeepAgentInvokeOptions {
+  readonly configurable: {
+    readonly thread_id: string;
+  };
+}
+
 export interface DeepAgentGraph {
-  invoke(input: DeepAgentInvokeInput): Promise<unknown>;
+  invoke(input: DeepAgentInvokeInput, options?: DeepAgentInvokeOptions): Promise<unknown>;
 }
 
 export type DeepAgentModel = NonNullable<CreateDeepAgentParams['model']>;
+export type LangGraphCheckpointSaver = NonNullable<CreateDeepAgentParams['checkpointer']>;
 
 export interface DeepAgentFactoryParams {
   readonly model: DeepAgentModel;
   readonly tools: readonly StructuredToolInterface[];
   readonly systemPrompt: string;
+  readonly checkpointer?: LangGraphCheckpointSaver | undefined;
 }
 
 export interface ModelFactoryInput {
@@ -59,4 +83,8 @@ export interface CreateLangGraphDeepAgentRuntimeInput {
   readonly systemPrompt?: string | undefined;
   readonly createDeepAgent?: (params: DeepAgentFactoryParams) => DeepAgentGraph;
   readonly createModel?: (input: ModelFactoryInput) => DeepAgentModel;
+  readonly createRunId?: () => string;
+  readonly now?: () => Date;
+  readonly runStore?: LangGraphAgentRunStore | undefined;
+  readonly checkpointSaver?: LangGraphCheckpointSaver | undefined;
 }

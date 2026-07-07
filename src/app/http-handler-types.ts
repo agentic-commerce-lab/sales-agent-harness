@@ -1,4 +1,5 @@
 import type { CommerceApiRequest } from '../api/harness-api.js';
+import type { AgentHarnessConfig } from '../contracts/config.js';
 import type { PublicAgentSession } from '../contracts/session.js';
 import type { AgentRuntimeResponse } from '../runtime/agent-runtime.js';
 import type {
@@ -26,6 +27,9 @@ export interface CheckoutResumeConfig {
 
 export interface CreateSalesAgentHttpHandlerInput {
   readonly app: SalesAgentHttpApp;
+  readonly agentConfig?: AgentHarnessConfig | undefined;
   readonly ucpPlatformProfile?: unknown;
   readonly checkoutResume?: CheckoutResumeConfig;
+  /** Log full request bodies (may contain buyer PII). Off by default. */
+  readonly debugLogRequestBodies?: boolean | undefined;
 }

@@ -12,12 +12,23 @@ import {
 export type AgentRuntimeProvider = 'deep_agents';
 export type CommerceAdapterProvider = 'shopware' | 'ucp';
 
+export type StorageEnvironmentConfig =
+  | {
+      readonly provider: 'memory';
+    }
+  | {
+      readonly provider: 'sqlite';
+      readonly sqlitePath: string;
+    };
+
 export interface ApplicationEnvironmentConfig {
   readonly agentConfigPath: string;
   readonly host: string;
   readonly port: number;
+  readonly debugLogRequestBodies: boolean;
   readonly runtimeProvider: AgentRuntimeProvider;
   readonly commerceAdapterProvider: CommerceAdapterProvider;
+  readonly storage: StorageEnvironmentConfig;
   readonly runtime: AgentRuntimeEnvironmentConfig;
   readonly commerce: CommerceEnvironmentConfig;
 }
@@ -28,8 +39,11 @@ export interface ApplicationEnvironmentInput
   readonly AGENT_CONFIG_PATH?: string | undefined;
   readonly HOST?: string | undefined;
   readonly PORT?: string | undefined;
+  readonly DEBUG_LOG_REQUEST_BODIES?: string | undefined;
   readonly AGENT_RUNTIME_PROVIDER?: string | undefined;
   readonly COMMERCE_ADAPTER_PROVIDER?: string | undefined;
+  readonly STORAGE_PROVIDER?: string | undefined;
+  readonly SQLITE_DB_PATH?: string | undefined;
 }
 
 export function loadApplicationEnvironmentConfig(
@@ -37,8 +51,11 @@ export function loadApplicationEnvironmentConfig(
     AGENT_CONFIG_PATH: process.env.AGENT_CONFIG_PATH,
     HOST: process.env.HOST,
     PORT: process.env.PORT,
+    DEBUG_LOG_REQUEST_BODIES: process.env.DEBUG_LOG_REQUEST_BODIES,
     AGENT_RUNTIME_PROVIDER: process.env.AGENT_RUNTIME_PROVIDER,
     COMMERCE_ADAPTER_PROVIDER: process.env.COMMERCE_ADAPTER_PROVIDER,
+    STORAGE_PROVIDER: process.env.STORAGE_PROVIDER,
+    SQLITE_DB_PATH: process.env.SQLITE_DB_PATH,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     AGENT_RUNTIME_MODEL: process.env.AGENT_RUNTIME_MODEL,
     SHOPWARE_BASE_URL: process.env.SHOPWARE_BASE_URL,
@@ -54,10 +71,12 @@ export function loadApplicationEnvironmentConfig(
     agentConfigPath: env.AGENT_CONFIG_PATH ?? 'config/agents/demo-sales-agent.json',
     host: env.HOST ?? '127.0.0.1',
     port: parsePort(env.PORT),
+    debugLogRequestBodies: env.DEBUG_LOG_REQUEST_BODIES === 'true',
     runtimeProvider: parseRuntimeProvider(env.AGENT_RUNTIME_PROVIDER ?? 'deep_agents'),
     commerceAdapterProvider: parseCommerceAdapterProvider(
       env.COMMERCE_ADAPTER_PROVIDER ?? 'shopware',
     ),
+    storage: parseStorageConfig(env),
     runtime: loadAgentRuntimeEnvironmentConfig(env),
     commerce: loadCommerceEnvironmentConfig(env),
   };
@@ -95,4 +114,21 @@ function parseCommerceAdapterProvider(value: string): CommerceAdapterProvider {
   }
 
   throw new Error(`Unsupported COMMERCE_ADAPTER_PROVIDER ${value}`);
+}
+
+function parseStorageConfig(env: ApplicationEnvironmentInput): StorageEnvironmentConfig {
+  const provider = env.STORAGE_PROVIDER ?? 'memory';
+
+  if (provider === 'memory') {
+    return { provider };
+  }
+
+  if (provider === 'sqlite') {
+    return {
+      provider,
+      sqlitePath: env.SQLITE_DB_PATH ?? 'data/sales-agent-harness.sqlite',
+    };
+  }
+
+  throw new Error(`Unsupported STORAGE_PROVIDER ${provider}`);
 }

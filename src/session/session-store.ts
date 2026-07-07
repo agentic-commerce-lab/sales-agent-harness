@@ -1,5 +1,12 @@
 import type { AgentSession, CommerceContext, PublicAgentSession } from '../contracts/session.js';
 
+export interface SessionStore {
+  createSession(session: AgentSession): AgentSession;
+  setCommerceContext(agentSessionId: string, commerceContext: CommerceContext): AgentSession;
+  getSession(agentSessionId: string, merchantId: string): AgentSession | undefined;
+  getPublicSession(agentSessionId: string, merchantId: string): PublicAgentSession | undefined;
+}
+
 interface SessionStoreClock {
   now(): Date;
 }
@@ -8,7 +15,7 @@ export interface InMemorySessionStoreOptions {
   readonly now?: () => Date;
 }
 
-export class InMemorySessionStore {
+export class InMemorySessionStore implements SessionStore {
   readonly #sessions = new Map<string, AgentSession>();
   readonly #clock: SessionStoreClock;
 

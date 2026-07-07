@@ -234,6 +234,7 @@ function createRuntime(
   responses: readonly { readonly message: string; readonly toolCalls: readonly string[] }[] = [],
 ): AgentRuntime {
   const queuedResponses = [...responses];
+  const runs = new Map<string, ReturnType<AgentRuntime['getRun']>>();
 
   return {
     respond: async (input) => {
@@ -245,6 +246,52 @@ function createRuntime(
           toolCalls: ['searchProducts'],
         }
       );
+    },
+    startRun: async (input) => {
+      const response = queuedResponses.shift() ?? {
+        message: 'Runtime response',
+        toolCalls: ['searchProducts'],
+      };
+      const run = {
+        runId: 'run-1',
+        agentSessionId: input.agentSessionId,
+        status: 'completed' as const,
+        input,
+        response,
+        createdAt: new Date('2026-06-30T12:00:00.000Z'),
+        updatedAt: new Date('2026-06-30T12:00:00.000Z'),
+      };
+      runs.set(run.runId, run);
+      return run;
+    },
+    getRun: (runId) => runs.get(runId),
+    resumeRun: async (runId, input) => {
+      const response = queuedResponses.shift() ?? {
+        message: 'Runtime response',
+        toolCalls: ['searchProducts'],
+      };
+      const run = {
+        runId,
+        agentSessionId: input.agentSessionId,
+        status: 'completed' as const,
+        input,
+        response,
+        createdAt: new Date('2026-06-30T12:00:00.000Z'),
+        updatedAt: new Date('2026-06-30T12:00:00.000Z'),
+      };
+      runs.set(runId, run);
+      return run;
+    },
+    cancelRun: (runId) => {
+      const run = runs.get(runId);
+      if (!run) return undefined;
+      const cancelled = {
+        ...run,
+        status: 'cancelled' as const,
+        updatedAt: new Date('2026-06-30T12:00:00.000Z'),
+      };
+      runs.set(runId, cancelled);
+      return cancelled;
     },
   };
 }
