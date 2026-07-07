@@ -1,9 +1,36 @@
 # Architecture
 
-This document describes how the Sales Agent Harness is put together today: the layers, the
-contracts between them, and which components are designed to be swapped out. For step-by-step
-instructions on how to perform a swap, see [docs/extending.md](extending.md). For the product
-rules behind these boundaries, see `specs/` and `AGENTS.md`.
+Sales Agent Harness is a merchant-side research preview for controlled agentic commerce demos,
+prototypes, and protocol experiments. It is not a production selling system. The architecture is
+designed to evaluate how a seller agent can safely use trusted commerce data and policy-gated
+commerce capabilities without giving the model direct access to Shopware, UCP, payment systems, or
+other backend execution surfaces.
+
+This document describes how the harness is put together today: the layers, the contracts between
+them, and which components are designed to be swapped out. For step-by-step instructions on how to
+perform a swap, see [docs/extending.md](extending.md). For the product rules behind these
+boundaries, see `specs/` and `AGENTS.md`.
+
+## Capability Scope
+
+The current app can search products, retrieve product details, prepare and update carts, summarize
+carts, create checkout handoffs, and optionally exercise a UCP-only checkout completion path when
+the capability and merchant policy are explicitly enabled. It also exposes the same controlled flow
+through a customer chat UI, deterministic HTTP commerce routes, and an A2A-compatible HTTP+JSON
+surface.
+
+The preview intentionally does not provide uncontrolled autonomous selling, production payment
+authorization, fraud controls, customer account mutation, legal-term acceptance, binding quotes,
+custom discount negotiation, tenant isolation, rate limiting, or an operations-grade deployment
+model.
+
+## Narrow Tech Stack
+
+The application is a strict TypeScript/Bun service. Zod validates transport input and config,
+LangGraph Deep Agents with OpenAI is the default replaceable agent runtime, Shopware Store API and
+UCP are implemented behind typed commerce adapters, merchant policy is config-as-code, and SQLite
+is the optional local persistence layer for sessions, handoffs, audit events, run records, checkout
+idempotency, and LangGraph checkpoints.
 
 ## Design principle
 

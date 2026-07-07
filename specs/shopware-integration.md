@@ -6,7 +6,7 @@ The Seller Agent Harness should use Shopware as the first real commerce backend 
 
 Shopware provides the commerce capabilities, such as catalog, cart, and checkout functionality. The Seller Agent Harness consumes and controls access to these capabilities. The sales agent itself should not call Shopware directly.
 
-The goal is to allow the sales agent to act on behalf of a customer in a limited, safe, and non-binding way: product discovery, product details, cart preparation, and checkout handoff.
+The goal is to allow the sales agent to act on behalf of a customer in a limited, safe, policy-controlled way: product discovery, product details, cart preparation, checkout handoff, and explicitly enabled checkout completion through a completion-capable adapter.
 
 ## 2. Core integration principle
 
@@ -34,7 +34,7 @@ The harness is responsible for:
 
 ## 3. Recommended MVP integration path
 
-For the MVP, the main integration path should be the **Shopware Store API**.
+For the MVP, the main catalog and cart integration path should be the **Shopware Store API**.
 
 The Store API should be used for customer-facing commerce operations such as:
 
@@ -45,11 +45,11 @@ The Store API should be used for customer-facing commerce operations such as:
 * cart summary
 * checkout handoff preparation
 
-The MVP should not use the agent to place orders, execute payment, accept terms, or complete checkout autonomously.
+The Store API path remains handoff-only. Full checkout completion requires an explicitly enabled capability, explicit buyer confirmation, merchant policy approval, and an adapter that supports completion.
 
 ## 4. Role of Shopware UCP
 
-Shopware UCP should be treated as a future-facing or optional protocol integration.
+Shopware UCP should be treated as the optional protocol integration for checkout completion and future agentic commerce flows.
 
 Shopware already exposes commerce capabilities. The seller agent should not be described as a Shopware UCP capability. Instead:
 
@@ -68,11 +68,12 @@ Long term, harness capabilities can map to UCP concepts:
 | cart creation        | cart                            |
 | cart update          | cart                            |
 | checkout handoff     | checkout                        |
+| checkout completion  | checkout                        |
 | customer linking     | identity linking                |
 | order status         | order management                |
 | future payment flows | payment / payment authorization |
 
-For the MVP, UCP should influence the capability design, but Store API should remain the concrete execution path.
+For the MVP, Store API remains the concrete catalog/cart execution path. UCP is the concrete path for checkout completion when `completeCheckout` is enabled and policy allows it.
 
 ## 5. Role of Shopware MCP
 
@@ -128,7 +129,7 @@ If a capability is disabled, the corresponding tool should not be available to t
 
 ## 7. Acting on behalf of the customer
 
-The agent can act on behalf of the customer only for non-binding preparation steps.
+The agent can act on behalf of the customer only through typed, policy-checked harness capabilities.
 
 Allowed in MVP:
 
@@ -138,11 +139,12 @@ Allowed in MVP:
 * add, remove, or update cart items
 * show cart summary
 * prepare checkout handoff
+* complete checkout when `completeCheckout` is enabled, buyer confirmation is explicit, policy allows completion, and the selected adapter supports completion
 
 Not allowed in MVP:
 
-* place an order
-* execute payment
+* place an order outside the typed `completeCheckout` harness capability
+* execute payment outside an explicitly supported, merchant-approved checkout completion flow
 * accept legal terms
 * make binding commercial commitments
 * modify customer account data
@@ -191,7 +193,7 @@ Buyer Agent
 
 The buyer agent should receive a summary and handoff link, not raw Shopware session or context data.
 
-## 9. Checkout handoff principle
+## 9. Checkout handoff and completion principle
 
 Checkout handoff means:
 
@@ -202,7 +204,7 @@ Checkout handoff means:
 5. The customer confirms they want to continue.
 6. The customer is handed over to the merchant-controlled Shopware checkout.
 
-The sales agent does not complete checkout itself.
+The sales agent does not complete checkout directly. It can only request the typed `completeCheckout` harness capability when that tool is registered, the buyer has explicitly confirmed, and policy allows completion.
 
 ```text
 Agent prepares cart
@@ -212,6 +214,17 @@ Agent prepares cart
                 -> Customer opens handoff
                     -> Shopware checkout
 ```
+
+Checkout completion means:
+
+1. The agent prepares or references a checkout session.
+2. The buyer explicitly confirms the exact checkout.
+3. The harness validates capability, policy, and approval requirements.
+4. The adapter updates checkout buyer and fulfillment data.
+5. The adapter completes checkout and returns the order result.
+6. The harness records policy, commerce-call, and checkout-completion audit events.
+
+With the current architecture, completion is UCP-backed. The Shopware Store API adapter remains handoff-only.
 
 ## 10. A2A checkout handoff
 

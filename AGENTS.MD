@@ -77,7 +77,7 @@ The MVP should let a merchant configure a limited sales-agent setup that can:
 - Block or escalate unsafe, unsupported, or policy-violating actions.
 - Provide logs and traces that explain what happened and why.
 
-Do not implement a fully autonomous selling agent for the MVP. The MVP is a controlled harness for safe, observable, non-binding commerce preparation.
+Do not implement uncontrolled autonomous selling. The MVP is a controlled harness for safe, observable commerce preparation and policy-gated checkout completion when the merchant explicitly enables a completion-capable adapter.
 
 ## Architecture Principles
 
@@ -133,11 +133,12 @@ For the MVP, these actions are allowed:
 - Add, remove, or update cart items.
 - Show cart summaries.
 - Prepare checkout handoff.
+- Complete checkout only when `completeCheckout` is enabled, checkout completion is allowed by policy, buyer confirmation is explicit, and the selected adapter supports completion.
 
 For the MVP, these actions are not allowed:
 
-- Place an order.
-- Execute payment.
+- Place an order outside the typed `completeCheckout` harness capability.
+- Execute payment outside an explicitly supported, merchant-approved checkout completion flow.
 - Accept legal terms.
 - Make binding commercial commitments.
 - Modify customer account data.
@@ -188,7 +189,7 @@ interface CommerceAdapter {
 
 ## Cart and Checkout Handoff
 
-Checkout handoff is preparation only. The agent must not complete checkout.
+Checkout handoff is preparation. Checkout completion is allowed only through the typed `completeCheckout` harness capability when enabled by merchant configuration, permitted by policy, explicitly confirmed by the buyer, and supported by the selected adapter.
 
 The expected flow is:
 
@@ -197,8 +198,8 @@ The expected flow is:
 3. Shopware calculates the cart.
 4. The agent shows a clear summary of products, quantities, prices, delivery, terms, and required confirmation.
 5. The customer confirms they want to continue.
-6. The harness creates a short-lived opaque handoff token.
-7. The customer is sent to the merchant-controlled Shopware checkout flow.
+6. For handoff flows, the harness creates a short-lived opaque handoff token and sends the customer to the merchant-controlled Shopware checkout flow.
+7. For completion-capable flows, the harness requires explicit buyer confirmation and executes checkout only through the adapter, recording policy and checkout-completion audit events.
 
 For A2A scenarios, return a `continueUrl` containing an opaque handoff token, not a Shopware context token.
 

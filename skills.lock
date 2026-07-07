@@ -7,7 +7,7 @@
       "pack": "typescript",
       "mode": "strict",
       "gatedRoots": ["."],
-      "vendoredSkillPath": "/Users/L.Rump/.local/share/acl-skills/acl-quality-gate"
+      "vendoredSkillPath": "~/.local/share/acl-skills/acl-quality-gate"
     }
   ]
 }

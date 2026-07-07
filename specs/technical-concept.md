@@ -46,6 +46,7 @@ Example configuration:
     "cartCreation": true,
     "cartUpdate": true,
     "checkoutHandoff": true,
+    "checkoutCompletion": false,
     "quotes": false,
     "negotiation": false,
     "payments": false,
@@ -56,12 +57,13 @@ Example configuration:
     "blockedCategories": ["restricted"],
     "maxCartValue": 1000,
     "allowCheckoutHandoff": true,
+    "allowCheckoutCompletion": false,
     "requireHumanApprovalForCheckout": false
   }
 }
 ```
 
-Based on this configuration, the harness decides which tools are registered with the Deep Agent and which actions are allowed at runtime. For example, if `quotes` is set to `false`, quote-related tools are not exposed to the agent at all. If `checkoutHandoff` is enabled, the agent may request checkout preparation, but the harness still performs policy checks before executing the action.
+Based on this configuration, the harness decides which tools are registered with the Deep Agent and which actions are allowed at runtime. For example, if `quotes` is set to `false`, quote-related tools are not exposed to the agent at all. If `checkoutHandoff` is enabled, the agent may request checkout preparation, but the harness still performs policy checks before executing the action. If `checkoutCompletion` is enabled, the harness must also require explicit buyer confirmation, checkout-completion policy approval, and a completion-capable adapter.
 
 For the MVP, the Deep Agent should only receive typed tools such as:
 
@@ -71,16 +73,17 @@ getProductDetails
 createCartDraft
 updateCartDraft
 prepareCheckoutHandoff
+completeCheckout
 ```
 
 Each tool should call the harness core first. The harness then checks the merchant configuration, executes the allowed action through the Shopware adapter, normalizes the response, and returns only safe data back to the agent.
 
-Shopware should be the first real commerce backend, focused on catalog and cart capabilities. The initial integration should support product search, product details, cart creation, cart updates, and checkout handoff. Quotes, negotiation, approvals, payments, and autonomous order placement should remain later additions and can be enabled later through the same capability configuration model.
+Shopware should be the first real commerce backend, focused on catalog and cart capabilities through Store API and checkout completion through UCP when available. The initial integration should support product search, product details, cart creation, cart updates, checkout handoff, and policy-gated checkout completion for completion-capable adapters. Quotes, negotiation, custom discounts, and customer-account mutation should remain later additions and can be enabled later through the same capability configuration model.
 
 A2A should be the first external agent interface, so the seller agent can be tested with buyer agents. In parallel, a simple customer UI API should use the same harness capabilities, allowing the MVP to support both direct customer interaction and agent-to-agent commerce scenarios.
 
 The MVP should use config-as-code for merchant policies and agent capabilities. These policies can define which actions are allowed, which products or categories are exposed, whether cart creation is allowed, when checkout handoff is possible, and which fields must never be shown to the model or customer.
 
-Observability should be included from the beginning. The service should log conversations, tool calls, policy decisions, Shopware calls, cart changes, blocked actions, and checkout handoffs. This makes the system useful for merchant validation as well as internal experiments, demos, and evaluations.
+Observability should be included from the beginning. The service should log conversations, tool calls, policy decisions, Shopware/UCP calls, cart changes, blocked actions, checkout handoffs, and checkout completions. This makes the system useful for merchant validation as well as internal experiments, demos, and evaluations.
 
 The main technical decision is to use **LangGraph Deep Agents as the replaceable agent runtime**, not as the complete commerce control layer. The long-term architecture should keep the harness, commerce capabilities, policies, capability configuration, and Shopware adapter independent from the agent framework. This makes it possible to later add other runtimes, deeper Shopware integration, Universal Commerce Protocol, Agent Payment Protocol, MCP, or additional ecommerce backends.

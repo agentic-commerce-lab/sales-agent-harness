@@ -1,6 +1,14 @@
 # Extending The Sales Agent Harness
 
-This application is meant to be extended by adding new implementations behind stable boundaries, not by letting the agent runtime call commerce systems directly. Keep the harness as the control layer for policy, capability checks, normalization, session context, and audit logging.
+This application is a research preview for controlled agentic commerce experiments. It is meant to
+be extended by adding new implementations behind stable boundaries, not by letting the agent
+runtime call commerce systems directly. Keep the harness as the control layer for policy,
+capability checks, normalization, session context, and audit logging.
+
+Extensions should preserve the preview's safety posture. Adding a provider, runtime, or capability
+does not make the project production-ready; production use would require separate work for
+authentication, authorization, tenant isolation, rate limiting, payment authorization, operational
+observability, data retention, and compliance review.
 
 ## Core Boundaries
 
@@ -145,11 +153,14 @@ Capture:
 
 Log `Error` objects or `cause` when wrapping failures. Do not log secrets, raw context tokens, private merchant data, or PII.
 
-## Storage And Production Extensions
+## Storage And Productionization Extensions
 
-The MVP uses in-memory session, handoff, and audit stores. Production extensions should replace these behind interfaces rather than changing call sites broadly.
+The preview supports in-memory stores and optional SQLite-backed local durability for sessions,
+handoffs, audit events, run records, checkout idempotency, and LangGraph checkpoints. A
+productionized system should replace or harden these behind interfaces rather than changing call
+sites broadly.
 
-Recommended next production boundaries:
+Recommended next productionization boundaries:
 
 - persistent session store
 - persistent handoff token store with TTL
@@ -157,6 +168,7 @@ Recommended next production boundaries:
 - API authentication and authorization
 - rate limiting and abuse controls
 - deployment secret management
+- migration, backup, retention, and multi-instance locking strategy
 
 ## Testing Expectations
 

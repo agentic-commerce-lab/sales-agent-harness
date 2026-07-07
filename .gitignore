@@ -8,3 +8,6 @@ coverage/
 !.env.example
 .DS_Store
 *.log
+
+# Internal research notes, not part of the public repo
+docs/payments-research.md

@@ -79,13 +79,13 @@ Success metrics are defined, such as product-data accuracy, valid quote rate, po
 MVP definition
 The MVP should create a starting point for merchants to build and validate their own AI-powered sales agent for agentic commerce.
 
-The MVP should provide a controlled merchant-side harness that allows a sales agent to access and expose selected commerce capabilities, such as product information, pricing, availability, promotions, quote preparation, cart creation, and checkout handoff, while ensuring that all actions are based on trusted merchant systems and governed by merchant-defined rules.
+The MVP should provide a controlled merchant-side harness that allows a sales agent to access and expose selected commerce capabilities, such as product information, pricing, availability, promotions, quote preparation, cart creation, checkout handoff, and explicitly enabled checkout completion, while ensuring that all actions are based on trusted merchant systems and governed by merchant-defined rules.
 
 The harness should make it possible for merchants to experiment with agentic sales use cases without losing control over product data, pricing, customer conditions, policies, compliance, checkout rules, or transaction governance.
 
 It should also be usable internally by the team to quickly spin up selling agents for experiments, demos, prototypes, and evaluations. This allows different sales-agent concepts, commerce flows, protocols, and buyer-agent interactions to be tested in a controlled environment before being productized or exposed to merchants.
 
-The MVP should not aim to deliver a fully autonomous sales agent yet. Instead, it should establish the foundational layer that enables safe, observable, and policy-controlled sales-agent behavior.
+The MVP should not aim to deliver an uncontrolled autonomous sales agent. Instead, it should establish the foundational layer that enables safe, observable, policy-controlled sales-agent behavior, including checkout completion only when a merchant explicitly enables it and the adapter supports it.
 
 MVP scope
 The MVP should include:
@@ -94,13 +94,13 @@ Access to merchant-side product, price, availability, delivery, and promotion da
 
 A basic policy layer to control what the sales agent may expose, recommend, quote, add to cart, or hand off to checkout.
 
-Support for a simple quote, cart, and checkout-preparation flow.
+Support for a simple quote, cart, checkout-preparation, and policy-gated checkout-completion flow.
 
 Clear handling of missing or uncertain data instead of guessing.
 
 Protection against unauthorized actions, confidential-data exposure, invalid discounts, and unsupported products or regions.
 
-Logging of agent actions, data sources, policy checks, cart changes, quote drafts, and checkout handoffs.
+Logging of agent actions, data sources, policy checks, cart changes, quote drafts, checkout handoffs, and checkout completions.
 
 A basic way for merchants to review agent behavior and test common sales scenarios.
 
@@ -115,7 +115,7 @@ Respect basic merchant policies such as customer group, region, discount limits,
 
 Prepare a cart or quote draft based on valid commerce data.
 
-Hand off to checkout with a clear summary before any binding transaction.
+Hand off to checkout with a clear summary or complete checkout only after explicit buyer confirmation, merchant policy approval, and adapter support.
 
 Block or escalate unsafe, unsupported, or policy-violating actions.
 
