@@ -56,6 +56,14 @@ External-facing docs live in [docs/](docs/README.md): architecture, demo journey
 guidance. Internal implementation plans and research notes are intentionally kept out of that
 section.
 
+For merchant evaluation, focus on two paths:
+
+- Run the demo against a real Shopware sales channel with visible products using the quick start
+  below, then use [docs/demo-journey.md](docs/demo-journey.md) to walk through product search,
+  cart preparation, checkout handoff, and A2A testing.
+- Use [docs/extending.md](docs/extending.md) when you want to customize the harness with another
+  adapter, capability, policy rule, runtime, route, storage layer, or observability sink.
+
 ## Quick Start
 
 Use this path when you want the fastest local smoke test against a real Shopware Store API.

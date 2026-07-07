@@ -6,13 +6,14 @@ research-preview scope, capabilities, quick start, and known limits.
 
 ## Start Here
 
-- [Architecture](architecture.md) explains the control-layer design, request flow, boundaries,
-  and replaceable runtime/adapter seams.
-- [Demo Journey](demo-journey.md) walks through a local merchant/customer/A2A demo using the
-  existing routes and capabilities.
-- [Extending The Harness](extending.md) describes how to add runtimes, commerce adapters,
-  capabilities, policy rules, transport routes, storage implementations, and observability without
-  bypassing the harness.
+- To get the demo running, start with the root [Quick Start](../README.md#quick-start), then follow
+  the [Demo Journey](demo-journey.md). For buyer-agent testing, use the
+  [A2A buyer demo](../examples/a2a-demo/README.md).
+- To customize the harness, read [Extending The Harness](extending.md). It covers where to add
+  commerce adapters, capabilities, policy rules, runtimes, routes, storage, and observability
+  without bypassing the harness.
+- Use [Architecture](architecture.md) as supporting context when you need the request flow,
+  boundaries, and replaceable runtime/adapter structure.
 
 ## What Belongs Here
 
