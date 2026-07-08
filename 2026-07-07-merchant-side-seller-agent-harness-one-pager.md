@@ -4,6 +4,8 @@
 
 By 2030, AI agents will mediate a meaningful share of the global economy. Every merchant will rely on specialized agents to represent their business, negotiate, sell, and support customers autonomously.
 
+Gartner predicts that by 2028, 90% of B2B buying will be AI agent intermediated, pushing more than $15 trillion of B2B spend through AI agent exchanges. Procurement is being reprogrammed by invisible agents, not policy: SEO and PPC give way to agent engine optimization, products have to be machine-readable, and procurement shifts toward efficient, autonomous machine-to-machine transactions. That is precisely the seller-side gap this harness targets: merchants who don't have a trusted, policy-controlled layer for agent-intermediated buying will not be ready to capture that spend, however it arrives.
+
 Building agent demos is easy. Building agents that merchants can trust with their reputation, prices, policies, customer promises, and commercial outcomes is hard. Security, identity, governance, negotiation, reliability, and merchant control become foundational capabilities.
 
 Shopware Agent Seller Harness is our first open-source step toward lowering the barrier to entry into agentic commerce. It gives merchants a practical starting point for building external-facing seller agents faster, using good primitives that reduce development effort and time to market. It is intentionally small, but it sets the foundation for safe seller agents, merchant control, and a Lab test bed we can keep building on as protocols, model runtimes, trust patterns, and agentic-commerce technologies evolve.
@@ -11,6 +13,8 @@ Shopware Agent Seller Harness is our first open-source step toward lowering the 
 ## Problem
 
 Merchants need a way to participate in agentic commerce without giving autonomous agents uncontrolled access to product data, prices, promotions, carts, checkout, customer conditions, or commercial rules.
+
+This isn't a distant B2C-only concern. Gartner's forecast of 90% agent-intermediated B2B buying by 2028 implies procurement itself is moving from human-run RFQs and portals to autonomous, machine-to-machine transactions between buyer and seller agents. A merchant with no policy-controlled seller-agent layer has no safe way to show up in that flow: either they block agent buyers outright and lose the spend, or they expose raw systems to an external agent and lose control over price, promises, and commercial outcomes.
 
 Today, a seller agent can easily become commercially unsafe if it guesses prices, invents stock levels, exposes confidential business logic, applies unauthorized discounts, creates misleading product claims, or hands a buyer into checkout without clear confirmation.
 
@@ -55,6 +59,10 @@ Shopware Agent Seller Harness is an open-source, framework-agnostic agentic comm
 Agentic commerce creates a new seller-side problem: external buyer agents and AI shopping assistants need structured access to merchant capabilities, but merchants cannot safely expose raw systems or let a model decide prices, discounts, availability, checkout terms, or commercial commitments on its own.
 
 The deeper industry challenge is not whether agents can be prototyped. They can. The challenge is whether agents can become secure, trusted, business-facing representatives of real merchants. That requires identity, governance, security, negotiation, reliability, observability, and open standards.
+
+**What market signal makes this urgent now?**
+
+Gartner predicts that by 2028, 90% of B2B buying will be AI agent intermediated, pushing over $15 trillion of B2B spend through AI agent exchanges. In that world, traditional SEO and PPC give way to agent engine optimization, products need to be machine-readable to be considered at all, and procurement shifts to efficient, autonomous machine-to-machine transactions. That reframes the harness from a research curiosity into infrastructure merchants will need regardless of which protocol or model runtime wins: a trusted layer that keeps product data machine-readable and commerce actions policy-controlled when the counterparty is another agent, not a human.
 
 **Why open source it?**
 
