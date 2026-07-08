@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "description": "Merchant-side seller agent harness for controlled agentic commerce experiments.",
+  "description": "Merchant-side Sales Agent Harness for controlled agentic commerce experiments.",
   "license": "MIT",
   "author": "shopware AG",
   "exports": {

@@ -24,7 +24,7 @@ HTTP API / A2A HTTP+JSON
 Replaceable Agent Runtime
         |
         v
-Seller Agent Harness Core
+Sales Agent Harness Core
         |
         v
 CommerceAdapter

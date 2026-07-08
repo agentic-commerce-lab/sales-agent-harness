@@ -60,13 +60,13 @@ Treat CI as the final authority; never relax a threshold to make a review pass.
 
 # Project Guidance for Agents
 
-This project defines and validates a Merchant-Side Seller Agent Harness: a controlled execution layer that lets AI seller agents represent a merchant safely across agentic commerce channels.
+This project defines and validates a Merchant-Side Sales Agent Harness: a controlled execution layer that lets AI seller agents represent a merchant safely across agentic commerce channels.
 
 The harness must preserve merchant control over product data, pricing, availability, policies, cart handling, checkout rules, and transaction governance. Treat the specs in `specs/` as the source of truth for product and architecture decisions.
 
 ## Product Goal
 
-Build a TypeScript-based Seller Agent Harness Service that supports internal demos, experiments, prototypes, and evaluations for agentic commerce.
+Build a TypeScript-based Sales Agent Harness Service that supports internal demos, experiments, prototypes, and evaluations for agentic commerce.
 
 The MVP should let a merchant configure a limited sales-agent setup that can:
 
@@ -83,7 +83,7 @@ Do not implement uncontrolled autonomous selling. The MVP is a controlled harnes
 
 - Keep the sales-agent runtime separate from commerce execution.
 - Use LangGraph Deep Agents as the replaceable agent runtime for conversation flow, planning, tool selection, context handling, and response generation.
-- Keep merchant-specific commerce control in the Seller Agent Harness Core.
+- Keep merchant-specific commerce control in the Sales Agent Harness Core.
 - Never let the agent runtime call Shopware, Store API, UCP, MCP, or other commerce systems directly.
 - Route every commerce action through typed harness tools, policy checks, capability checks, normalization, filtering, and logging.
 - Design capability contracts so Shopware Store API is the first backend, while UCP, MCP, payment protocols, and other commerce platforms can be added later.
@@ -100,7 +100,7 @@ A2A + Customer API Layer
 LangGraph Deep Agent
         |
         v
-Seller Agent Harness Core
+Sales Agent Harness Core
         |
         v
 Commerce Capability Layer

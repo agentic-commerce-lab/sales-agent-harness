@@ -30,9 +30,9 @@ export function createBuyerPrompt(goal: string): string {
   const profile = readBuyerProfile();
 
   return `\
-You are an autonomous BUYER agent talking to one SELLER agent over the A2A protocol.
+You are an autonomous buyer agent talking to one seller agent over the A2A protocol.
 
-Procurement goal: ${goal}
+Purchase goal: ${goal}
 
 The seller sells products from its own single merchant catalogue through internal tools:
 catalogue search, product details, cart creation, checkout preparation, and checkout

@@ -1,5 +1,5 @@
 Project Goal
-The goal of this project is to define and validate a Merchant-Side Seller Agent Harness: a controlled execution layer that enables AI seller agents to represent a merchant safely, accurately, and transparently across agentic commerce channels.
+The goal of this project is to define and validate a Merchant-Side Sales Agent Harness: a controlled execution layer that enables AI seller agents to represent a merchant safely, accurately, and transparently across agentic commerce channels.
 
 The harness should allow seller agents to expose product, pricing, availability, promotion, quote, cart, and checkout capabilities to external buyer agents or end customers, while ensuring that all actions follow merchant-defined rules, permissions, commercial policies, and compliance requirements.
 
@@ -8,7 +8,7 @@ In short, the project should make it possible for merchants to participate in ag
 Top 5 Acceptance Criteria
 1. The seller agent represents merchant data accurately
 Acceptance criterion:
-The seller agent can access and expose accurate merchant-side commerce data, including product information, pricing, availability, variants, delivery options, customer-specific conditions, and commercial rules.
+The seller agent can access and expose accurate merchant-side commerce data, including product information, pricing, availability, delivery options, customer-specific conditions, and commercial rules.
 
 Accepted when:
 

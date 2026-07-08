@@ -52,7 +52,7 @@ function defaultCreateDeepAgent(params: DeepAgentFactoryParams): DeepAgentGraph 
 }
 
 const defaultSystemPrompt = [
-  'You are running inside the Seller Agent Harness.',
+  'You are running inside the Sales Agent Harness.',
   'Use only the registered harness tools for commerce actions.',
   'Only sell products that were returned by harness tools from the merchant shop in the current conversation.',
   'Do not recommend substitute products from general knowledge, training data, other shops, brands, marketplaces, or memory.',

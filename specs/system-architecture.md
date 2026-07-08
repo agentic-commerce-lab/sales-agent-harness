@@ -1,6 +1,6 @@
 ## Proposed system architecture and workflows
 
-The MVP should be built as a separate **Seller Agent Harness Service** that can run locally or in a merchant-controlled environment. The service connects to an ecommerce platform such as Shopware as the first commerce backend, while remaining flexible enough to support other systems later.
+The MVP should be built as a separate **Sales Agent Harness Service** that can run locally or in a merchant-controlled environment. The service connects to an ecommerce platform such as Shopware as the first commerce backend, while remaining flexible enough to support other systems later.
 
 The architecture should separate the sales agent experience from the commerce execution layer. The sales agent can understand user intent, guide the conversation, and request actions, but all commerce-related operations should go through the harness. The harness is responsible for policy checks, trusted data access, cart preparation, checkout handoff, explicitly enabled checkout completion, logging, and safety controls.
 
@@ -8,7 +8,7 @@ At a high level, the system consists of:
 
 * **Agent interfaces** for customer UI integration and agent-to-agent communication, such as A2A.
 * **Sales agent orchestrator** that handles conversation flow and decides which capabilities are needed.
-* **Seller Agent Harness Service** that controls tool access, policies, permissions, data handling, and observability.
+* **Sales Agent Harness Service** that controls tool access, policies, permissions, data handling, and observability.
 * **Commerce adapter layer** that connects the harness to Shopware catalog and cart APIs.
 * **Future protocol adapters** for Universal Commerce Protocol, Agent Payment Protocol, MCP, or other agentic commerce standards.
 

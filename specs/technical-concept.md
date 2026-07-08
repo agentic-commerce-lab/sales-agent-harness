@@ -1,6 +1,6 @@
-## Technical concept: Seller Agent Harness with LangGraph Deep Agents in TypeScript
+## Technical concept: Sales Agent Harness with LangGraph Deep Agents in TypeScript
 
-The MVP can be implemented as a **TypeScript-based Seller Agent Harness Service** using **LangGraph Deep Agents** as the agent runtime. Deep Agents provides higher-level agent capabilities such as planning, tool usage, subagents, context handling, and memory, while LangGraph provides the underlying orchestration runtime for stateful agent workflows.
+The MVP can be implemented as a **TypeScript-based Sales Agent Harness Service** using **LangGraph Deep Agents** as the agent runtime. Deep Agents provides higher-level agent capabilities such as planning, tool usage, subagents, context handling, and memory, while LangGraph provides the underlying orchestration runtime for stateful agent workflows.
 
 The core idea is to use LangGraph Deep Agents for the **sales-agent experience**, while keeping all merchant-specific commerce execution inside a separate harness layer. The agent can understand customer or buyer-agent requests, plan the next step, and request tools, but it should not access Shopware or commerce systems directly.
 
@@ -16,7 +16,7 @@ A2A + Customer API Layer
 LangGraph Deep Agent
         |
         v
-Seller Agent Harness Core
+Sales Agent Harness Core
         |
         v
 Commerce Capability Layer
@@ -30,7 +30,7 @@ Shopware Catalog / Cart / Checkout
 
 The **LangGraph Deep Agent** is responsible for conversation flow, intent handling, tool selection, and response generation. It can support richer demo and evaluation scenarios because it can plan multi-step tasks and manage context across the interaction.
 
-The **Seller Agent Harness Core** remains the control layer. It validates tool calls, applies merchant policies, filters data, logs actions, and ensures the agent only uses approved commerce capabilities. This keeps the architecture safe and avoids coupling business-critical commerce logic directly to the agent framework.
+The **Sales Agent Harness Core** remains the control layer. It validates tool calls, applies merchant policies, filters data, logs actions, and ensures the agent only uses approved commerce capabilities. This keeps the architecture safe and avoids coupling business-critical commerce logic directly to the agent framework.
 
 A key MVP requirement is that the **capabilities of the sales agent should be configurable on a code basis**, for example through a JSON or YAML configuration file. This allows the internal team or merchant developer to define which tools and capabilities are available for a specific sales agent without changing the core harness implementation.
 

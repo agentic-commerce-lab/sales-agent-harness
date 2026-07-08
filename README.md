@@ -10,31 +10,21 @@ and protocol research. It does not include production authentication, tenant iso
 limiting, payment authorization, fraud controls, compliance review, admin operations, or an
 operations-grade persistence and deployment model.
 
-## Research Preview Scope
+## What It Does
 
-The harness is a controlled execution layer between an agent runtime and a commerce backend. The
-agent runtime can only call typed harness capabilities that are enabled in merchant config. The
-harness applies policy checks, normalizes commerce responses, filters confidential fields, stores
-commerce context server-side, and records audit events before data reaches the model, buyer agent,
-or customer UI.
-
-Current research-preview capabilities:
-
-- Search products from trusted commerce data.
-- Retrieve product details, price, availability, attributes, variants, and delivery information
-  when the adapter returns it.
-- Create and update cart drafts or carts through the configured commerce adapter.
-- Summarize cart totals, line items, and shipping costs.
-- Prepare checkout handoff URLs using opaque harness tokens or adapter-owned UCP checkout
+- Searches products from trusted commerce data.
+- Retrieves product details, prices, availability, and delivery information when the adapter
+  returns it.
+- Creates and updates cart drafts or carts through the configured commerce adapter.
+- Summarizes cart totals, line items, and shipping costs.
+- Prepares checkout handoff URLs using opaque harness tokens or adapter-owned UCP checkout
   sessions.
-- Complete checkout only in the explicit UCP research path, when the capability and merchant
-  policy are both enabled and the buyer confirmation payload is present.
-- Expose the same controlled flow through a small customer chat UI, direct HTTP commerce routes,
-  and an A2A-compatible HTTP+JSON surface.
-- Persist local demo state with SQLite when enabled: sessions, handoffs, audit events, run
-  records, checkout idempotency records, and LangGraph checkpoints.
+- Completes checkout only in the explicit UCP research path, when the capability and merchant
+  policy are both enabled and buyer confirmation data is present.
+- Exposes the same controlled flow through a customer chat UI, direct HTTP commerce routes, and an
+  A2A-compatible HTTP+JSON surface.
 
-Intentionally out of scope for this preview:
+## What It Does Not Do
 
 - Uncontrolled autonomous selling.
 - Payment execution outside an explicitly supported, merchant-approved checkout completion flow.
@@ -42,755 +32,90 @@ Intentionally out of scope for this preview:
 - Binding quotes, custom discount negotiation, or customer account mutation.
 - Direct model access to Shopware, Store API, UCP, MCP, PSPs, or other commerce systems.
 
-## Tech Stack
+## Quick Start
 
-The service is a strict TypeScript/Bun application. It uses Zod for runtime input/config
-validation, LangGraph Deep Agents with OpenAI as the default replaceable agent runtime, typed
-commerce adapters for Shopware Store API and UCP, config-as-code for merchant capabilities and
-policy, and SQLite for optional local durability. HTTP is served through Bun, and the same app
-surface handles customer UI calls, deterministic commerce API calls, and A2A-compatible messages.
+Use this path for a local smoke test against a real Shopware Store API.
+
+1. Copy the example environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Fill in the required values:
+
+   ```bash
+   OPENAI_API_KEY=sk-...
+   SHOPWARE_BASE_URL=https://your-shop.example
+   SHOPWARE_STORE_API_ACCESS_KEY=store-api-access-key
+   SHOPWARE_DEFAULT_SALES_CHANNEL_ID=sales-channel-id
+   AGENT_RUNTIME_MODEL=gpt-5-mini
+   STORAGE_PROVIDER=sqlite
+   SQLITE_DB_PATH=data/sales-agent-harness.sqlite
+   HOST=127.0.0.1
+   PORT=3000
+   ```
+
+3. Start with Docker:
+
+   ```bash
+   docker compose up --build
+   ```
+
+   Or start with Bun:
+
+   ```bash
+   bun install
+   set -a
+   source .env
+   set +a
+   bun run start
+   ```
+
+4. Check health:
+
+   ```bash
+   curl http://127.0.0.1:3000/health
+   ```
+
+5. Open the example UI:
+
+   ```text
+   http://127.0.0.1:3000/examples/customer-ui
+   ```
+
+6. Create a session and send a chat message:
+
+   ```bash
+   curl -X POST http://127.0.0.1:3000/sessions \
+     -H 'content-type: application/json' \
+     -d '{"channel":"customer_ui","customerContext":{"region":"DE"}}'
+
+   curl -X POST http://127.0.0.1:3000/chat \
+     -H 'content-type: application/json' \
+     -d '{"agentSessionId":"session-id-from-create-session","message":"Find waterproof jackets"}'
+   ```
+
+For the full local runbook, real-agent test flow, endpoint list, and troubleshooting, see
+[Running The Harness](docs/running.md).
 
 ## Documentation
 
-External-facing docs live in [docs/](docs/README.md): architecture, demo journey, and extension
-guidance. Internal implementation plans and research notes are intentionally kept out of that
-section.
-
-For merchant evaluation, focus on two paths:
-
-- Run the demo against a real Shopware sales channel with visible products using the quick start
-  below, then use [docs/demo-journey.md](docs/demo-journey.md) to walk through product search,
-  cart preparation, checkout handoff, and A2A testing.
-- Use [docs/extending.md](docs/extending.md) when you want to customize the harness with another
-  adapter, capability, policy rule, runtime, route, storage layer, or observability sink.
-
-## Quick Start
-
-Use this path when you want the fastest local smoke test against a real Shopware Store API.
-
-### 1. Create a local environment file
-
-Copy the example:
-
-```bash
-cp .env.example .env
-```
-
-Then fill in the real values in `.env`.
-
-Create `.env` in the project root:
-
-```bash
-OPENAI_API_KEY=sk-...
-SHOPWARE_BASE_URL=https://your-shop.example
-SHOPWARE_STORE_API_ACCESS_KEY=store-api-access-key
-SHOPWARE_DEFAULT_SALES_CHANNEL_ID=sales-channel-id
-SHOPWARE_UCP_AGENT_PROFILE_URL=https://platform.example/.well-known/ucp
-SHOPWARE_UCP_SIGNING_KEY_ID=platform-2026
-SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK={"kty":"EC","crv":"P-256","kid":"platform-2026","x":"...","y":"...","d":"..."}
-SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL=false
-AGENT_RUNTIME_MODEL=gpt-5-mini
-STORAGE_PROVIDER=sqlite
-SQLITE_DB_PATH=data/sales-agent-harness.sqlite
-HOST=127.0.0.1
-PORT=3000
-```
-
-Required values:
-
-- `OPENAI_API_KEY`: OpenAI API key used by the Deep Agents runtime.
-- `SHOPWARE_BASE_URL`: Shopware storefront base URL, without a trailing slash.
-- `SHOPWARE_STORE_API_ACCESS_KEY`: Store API access key for the target sales channel.
-- `SHOPWARE_DEFAULT_SALES_CHANNEL_ID`: sales channel ID used for sessions and handoff records.
-- `SHOPWARE_UCP_AGENT_PROFILE_URL`: optional UCP platform profile URL used by the `ucp_shopware` adapter; defaults to `${SHOPWARE_BASE_URL}/.well-known/ucp`.
-- `SHOPWARE_UCP_SIGNING_KEY_ID` and `SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK`: optional ES256 signing key pair for strict UCP request signing. Configure both together.
-- `SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL`: set to `true` only for local HTTP Shopware dev-mode profile fetching. Any productionized version would need HTTPS profile URLs.
-
-Optional values:
-
-- `AGENT_CONFIG_PATH`, defaulting to `config/agents/demo-sales-agent.json`
-- `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
-- `AGENT_RUNTIME_PROVIDER`, currently `deep_agents`
-- `COMMERCE_ADAPTER_PROVIDER`, `shopware` by default, or `ucp_shopware` for the Agentic Commerce UCP plugin adapter
-- `STORAGE_PROVIDER`, `memory` by default, or `sqlite` for durable local storage and LangGraph checkpoints
-- `SQLITE_DB_PATH`, defaulting to `data/sales-agent-harness.sqlite` when SQLite storage is enabled. The default runnable app uses this same SQLite database for sessions, handoffs, audit events, run records, checkout idempotency, and native LangGraph checkpoint tables.
-- `HOST`, defaulting to `127.0.0.1`
-- `PORT`, defaulting to `3000`
-- `DEBUG_LOG_REQUEST_BODIES`, defaulting to `false`; set to `true` to log full request bodies for local debugging. Bodies can contain buyer PII and chat content, so leave it off outside local debugging.
-
-The service reads environment variables through typed config accessors.
-
-### Demo agent profile
-
-The public seller-agent identity lives in the agent config under `agentProfile`. The default demo config includes:
-
-```json
-{
-  "agentProfile": {
-    "displayName": "Demo Store Sales Agent",
-    "description": "Merchant-controlled seller agent for product discovery, cart preparation, checkout handoff, and opt-in UCP checkout completion.",
-    "serviceSummary": "Search trusted Shopware catalog data, prepare carts, summarize totals, create checkout handoffs, and complete UCP checkout when merchant policy allows it.",
-    "supportedLanguages": ["en"],
-    "contactUrl": "https://shop.example.test/contact",
-    "examples": [
-      "Find waterproof jackets",
-      "Prepare a cart with two of product product-1",
-      "Complete checkout for checkout-1 after buyer confirmation"
-    ]
-  }
-}
-```
-
-`GET /.well-known/agent-card.json` uses these fields for the A2A agent name, description, skill summary, examples, and metadata. Capabilities and policies still come from the typed harness config; the profile is public description, not authorization.
-
-### Commerce Adapter Choice
-
-The default `shopware` adapter calls the Shopware Store API directly and keeps checkout handoff as a harness-owned opaque token. Use it when you want the smallest dependency surface or are testing against a plain Shopware Store API.
-
-Set this when the Shopware Agentic Commerce plugin is installed and UCP is enabled for the target sales channel:
-
-```bash
-COMMERCE_ADAPTER_PROVIDER=ucp_shopware
-```
-
-With `ucp_shopware`, catalog/cart calls go through the plugin's UCP REST endpoints under `/ucp/v1`, and `prepareCheckoutHandoff` creates a UCP checkout session and returns the plugin-provided `continueUrl`. The harness still owns runtime orchestration, policy checks, tool exposure, response normalization, and audit logging.
-
-For strict UCP, set `SHOPWARE_UCP_AGENT_PROFILE_URL` to the public HTTPS URL where this harness serves `/.well-known/ucp`, and configure `SHOPWARE_UCP_SIGNING_KEY_ID` plus `SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK`. The harness signs UCP REST requests with RFC 9421 `Signature-Input`/`Signature` headers and RFC 9530 `Content-Digest`, and the profile endpoint publishes only the public JWK under `signing_keys`.
-
-Generate a local P-256 signing key with:
-
-```bash
-node -e "const {generateKeyPairSync}=require('crypto'); const {privateKey}=generateKeyPairSync('ec',{namedCurve:'P-256'}); const jwk=privateKey.export({format:'jwk'}); jwk.kid='platform-2026'; console.log(JSON.stringify(jwk));"
-```
-
-For local HTTP Shopware/UCP testing, the Shopware Agentic Commerce plugin must allow local profile fetching. In the Shopware container/environment, set:
-
-```bash
-SWAG_AGENTIC_COMMERCE_UCP_PROFILE_FETCHING_DEVELOPMENT_MODE=1
-```
-
-Without that Shopware setting, UCP calls fail with `Plain http is only allowed when profile fetching development mode is enabled.`
-
-The Shopware UCP sales-channel config must also allow this unsigned local harness flow:
-
-- `active: true`
-- `enabledCapabilities` includes `catalog`, `cart`, and `checkout`
-- `enabledTransports` includes `rest`; include `embedded` when using the embedded checkout fallback URL
-- `signaturePolicy: "strict"` for signed UCP testing, or `"log"` only for local unsigned smoke tests
-- `embeddedAllowedOrigins` and `embeddedFrameAncestors` include the storefront origin, for example `http://localhost`
-
-For any productionized version, keep strict signature enforcement, use an HTTPS profile URL without redirects, and keep the private JWK only in server-side environment or secret storage. This repository does not provide the surrounding production controls by itself.
-
-### 2. Start with Docker
-
-```bash
-docker compose up --build
-```
-
-Expected output:
-
-```text
-Sales Agent Harness listening on http://0.0.0.0:3000
-```
-
-The service is available on the host at:
-
-```text
-http://127.0.0.1:3000
-```
-
-Stop it with:
-
-```bash
-docker compose down
-```
-
-### 3. Or start with Bun
-
-Install dependencies:
-
-```bash
-bun install
-```
-
-If your shell does not load `.env` automatically, export the file before starting:
-
-```bash
-set -a
-source .env
-set +a
-```
-
-```bash
-bun run start
-```
-
-Expected output:
-
-```text
-Sales Agent Harness listening on http://127.0.0.1:3000
-```
-
-### 4. Check health
-
-In another terminal:
-
-```bash
-curl http://127.0.0.1:3000/health
-```
-
-Expected response:
-
-```json
-{"status":"ok"}
-```
-
-### 5. Open the example UI
-
-Open this URL in a browser:
-
-```text
-http://127.0.0.1:3000/examples/customer-ui
-```
-
-The example UI lets you create a harness session through `/sessions` and send a customer chat message through `/chat`. It is intentionally small and uses the same public HTTP routes as a merchant-owned customer frontend.
-
-### 6. Create a session
-
-For the public customer/demo flow, do not provide a Shopware context token. The harness creates and stores the server-side commerce context for the session:
-
-```bash
-curl -X POST http://127.0.0.1:3000/sessions \
-  -H 'content-type: application/json' \
-  -d '{"channel":"customer_ui","customerContext":{"region":"DE"}}'
-```
-
-Copy the returned `agentSessionId`. If a trusted merchant storefront or Shopware app already has a server-side context token, it may pass `shopwareContextToken` during session creation. The raw token is stored server-side and is never returned.
-
-### 7. Send a chat message
-
-```bash
-curl -X POST http://127.0.0.1:3000/chat \
-  -H 'content-type: application/json' \
-  -d '{"agentSessionId":"session-id-from-create-session","message":"Find waterproof jackets"}'
-```
-
-The Deep Agents runtime can call only the registered harness tools. The harness applies capability checks, policy checks, response filtering, and audit logging before returning commerce data.
-
-### 8. Try a direct commerce call
-
-Use this when you want to test the harness without waiting for model tool selection:
-
-```bash
-curl -X POST http://127.0.0.1:3000/commerce/customer \
-  -H 'content-type: application/json' \
-  -d '{"agentSessionId":"session-id-from-create-session","capability":"searchProducts","query":"jacket","limit":3}'
-```
-
-## Testing The Harness
-
-Run the full test suite:
-
-```bash
-bun test
-```
-
-Run the checks used for normal code changes:
-
-```bash
-bun run format:check
-bun run lint
-bun run typecheck
-```
-
-Run the full quality gate before sharing the branch:
-
-```bash
-bun run quality
-```
-
-Fast manual smoke test:
-
-1. Start the service with real `OPENAI_API_KEY` and `SHOPWARE_*` values.
-2. Call `GET /health` and expect `{"status":"ok"}`.
-3. Create a session with `POST /sessions`.
-4. Use the returned `agentSessionId` in `POST /chat`.
-5. Use `POST /commerce/customer` to test deterministic commerce calls without model tool selection.
-6. Use `POST /message:send` to test the A2A-compatible HTTP+JSON entrypoint.
-
-## Testing With A Real AI Agent
-
-Use this flow when you want to test the full path through LangGraph Deep Agents, OpenAI, harness tools, policy checks, and the Shopware Store API.
-
-### 1. Prepare real credentials
-
-Your `.env` must contain real values:
-
-```bash
-OPENAI_API_KEY=sk-...
-AGENT_RUNTIME_MODEL=gpt-5-mini
-SHOPWARE_BASE_URL=https://your-shop.example
-SHOPWARE_STORE_API_ACCESS_KEY=store-api-access-key
-SHOPWARE_DEFAULT_SALES_CHANNEL_ID=sales-channel-id
-```
-
-The Shopware sales channel should have visible products. For customer-facing tests, create a session without a `shopwareContextToken`; the harness creates one server-side. For storefront/app integrations that already have a trusted server-side context token, pass it during session creation and the harness forwards it to Shopware as `sw-context-token`.
-
-### 2. Start the harness
-
-Docker:
-
-```bash
-docker compose up --build
-```
-
-Bun:
-
-```bash
-set -a
-source .env
-set +a
-bun run start
-```
-
-### 3. Create an agent session
-
-```bash
-curl -s -X POST http://127.0.0.1:3000/sessions \
-  -H 'content-type: application/json' \
-  -d '{
-    "channel": "customer_ui",
-    "customerContext": { "region": "DE" }
-  }'
-```
-
-Copy the returned `agentSessionId`.
-
-### 4. Ask a question that should require a tool call
-
-```bash
-curl -s -X POST http://127.0.0.1:3000/chat \
-  -H 'content-type: application/json' \
-  -d '{
-    "agentSessionId": "session-id-from-create-session",
-    "message": "Find three waterproof jackets and tell me which one is cheapest."
-  }'
-```
-
-A successful real-agent response should include:
-
-- `message`: the generated seller-agent response.
-- `toolCalls`: tool names the Deep Agent selected, such as `searchProducts` or `getProductDetails`.
-- Product, price, and availability details only if Shopware returned them through the harness.
-
-If `toolCalls` is empty, ask a more commerce-specific question, or check that the capability is enabled in `config/agents/demo-sales-agent.json`.
-
-### 5. Test cart preparation
-
-Use a real product ID from the product search response:
-
-```bash
-curl -s -X POST http://127.0.0.1:3000/chat \
-  -H 'content-type: application/json' \
-  -d '{
-    "agentSessionId": "session-id-from-create-session",
-    "message": "Prepare a cart with 1 unit of product PRODUCT_ID and summarize the total. Do not place an order."
-  }'
-```
-
-The agent may call `createCart`, `getCartSummary`, or `prepareCheckoutHandoff`, depending on the phrasing and enabled capabilities. The harness still blocks order placement, payment execution, legal-term acceptance, binding quotes, and custom discounts.
-
-### 6. Test through A2A
-
-```bash
-curl -s -X POST http://127.0.0.1:3000/message:send \
-  -H 'content-type: application/a2a+json' \
-  -H 'A2A-Version: 1.0' \
-  -d '{
-    "message": {
-      "messageId": "real-agent-msg-1",
-      "role": "ROLE_USER",
-      "parts": [{ "text": "Find waterproof jackets and recommend one under 100 EUR." }],
-      "metadata": { "agentSessionId": "session-id-from-create-session" }
-    }
-  }'
-```
-
-The A2A response wraps the same real-agent output in a completed task. Commerce still flows through harness tools, not directly from the model to Shopware.
-
-### Real-Agent Troubleshooting
-
-- OpenAI authentication errors: verify `OPENAI_API_KEY` and `AGENT_RUNTIME_MODEL`.
-- No tool calls: ask for a concrete commerce action, such as product search or cart preparation.
-- Shopware `401` or `403`: verify the Store API access key and sales-channel mapping.
-- Empty results: confirm products are visible in the configured Shopware sales channel.
-- Policy block: check blocked products/categories, `maxItemQuantity`, `maxCartValue`, region, and enabled capabilities in the agent config file.
-- Checkout handoff returns a harness `/agent-checkout` URL: use `COMMERCE_ADAPTER_PROVIDER=ucp_shopware` with the Agentic Commerce plugin if you want the plugin-generated UCP checkout `continueUrl` instead.
-
-## A2A Connection
-
-The service exposes an A2A-compatible HTTP+JSON surface for buyer-agent experiments:
-
-- `GET /.well-known/agent-card.json`: discovery document with supported interface, capabilities, and commerce skill metadata.
-- `POST /message:send`: buyer-agent message entrypoint using `application/a2a+json`.
-- `POST /commerce/a2a`: harness-native commerce capability endpoint for direct A2A commerce tests.
-
-An A2A buyer agent should discover the seller through the Agent Card:
-
-```bash
-curl http://127.0.0.1:3000/.well-known/agent-card.json
-```
-
-Then send a message with the existing harness `agentSessionId` in message metadata:
-
-```bash
-curl -X POST http://127.0.0.1:3000/message:send \
-  -H 'content-type: application/a2a+json' \
-  -H 'A2A-Version: 1.0' \
-  -d '{
-    "message": {
-      "messageId": "msg-1",
-      "role": "ROLE_USER",
-      "parts": [{ "text": "Find waterproof jackets" }],
-      "metadata": { "agentSessionId": "session-id-from-create-session" }
-    }
-  }'
-```
-
-The response is a completed A2A task with an agent message and response artifact. The harness still owns all commerce execution: A2A traffic goes through the same chat runtime, typed tools, policy checks, Shopware adapter, response filtering, and audit log as the customer UI.
-
-### Fast Troubleshooting
-
-- `Missing OPENAI_API_KEY`: set `OPENAI_API_KEY` and restart the service.
-- `Missing SHOPWARE_*`: set all required Shopware variables and restart the service.
-- `401` or `403` from Shopware: verify the Store API access key belongs to the configured sales channel.
-- Empty product results: verify the Shopware sales channel has visible products and the query matches catalog data.
-- Session not found: create a fresh session and reuse the returned `agentSessionId`.
-- Checkout handoff URL is a harness opaque-token URL: use `COMMERCE_ADAPTER_PROVIDER=ucp_shopware` when the Agentic Commerce plugin should own the UCP checkout continuation URL.
-
-## Architecture
-
-The harness keeps conversation orchestration separate from commerce execution:
-
-```text
-Customer UI / A2A Buyer Agent
-        |
-        v
-Customer API / A2A API
-        |
-        v
-Replaceable Agent Runtime
-        |
-        v
-Seller Agent Harness Core
-        |
-        v
-CommerceAdapter
-        |
-        v
-Shopware Store API
-```
-
-LangGraph Deep Agents are implemented behind the replaceable runtime boundary in `src/runtime/langgraph/`. Runtime-specific code must not be imported into `src/harness`, `src/commerce`, `src/policy`, or `src/contracts`.
-
-Shopware is the first commerce backend through the platform-neutral `CommerceAdapter` contract. The agent runtime, customer API, and A2A API call the harness only; they never call Shopware directly.
-
-For extension guidance, see [docs/extending.md](docs/extending.md).
-
-## Research Preview Capabilities
-
-Enabled capabilities are configured per agent in `config/agents/demo-sales-agent.json`:
-
-- `searchProducts`
-- `getProductDetails`
-- `createCart`
-- `updateCart`
-- `getCartSummary`
-- `prepareCheckoutHandoff`
-- `completeCheckout` for explicitly enabled UCP-only automated checkout
-
-Disabled capabilities are not registered as tools. Policy checks run before every commerce action, and blocked or escalated actions do not call the adapter. Cart limits such as `maxCartValue` and `maxItemQuantity` are additionally re-checked against the real cart summary returned by the adapter for `createCart`, `updateCart`, and `prepareCheckoutHandoff`; a violating result is withheld and reported as blocked, so an over-limit cart cannot proceed to checkout handoff or completion.
-
-## Configuration
-
-Agent and merchant policy configuration is config-as-code JSON:
-
-```json
-{
-  "agentId": "demo-sales-agent",
-  "merchantId": "demo-shopware-merchant",
-  "enabledCapabilities": ["searchProducts", "getProductDetails"],
-  "policies": {
-    "allowedChannels": ["customer_ui", "a2a"],
-    "blockedCategories": [],
-    "blockedProducts": [],
-    "maxCartValue": { "amount": 1000, "currency": "EUR" },
-    "maxItemQuantity": 5,
-    "allowCheckoutHandoff": true,
-    "allowCheckoutCompletion": false,
-    "requireHumanApprovalForCheckout": false,
-    "unsupportedRegions": [],
-    "confidentialFields": ["shopwareContextToken", "margin"]
-  }
-}
-```
-
-Shopware environment access is centralized in `src/env/shopware-config.ts`:
-
-- `SHOPWARE_BASE_URL`
-- `SHOPWARE_STORE_API_ACCESS_KEY`
-- `SHOPWARE_DEFAULT_SALES_CHANNEL_ID`
-
-Deep Agents/OpenAI runtime access is centralized in `src/env/agent-runtime-config.ts`:
-
-- `OPENAI_API_KEY`
-- `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
-
-Do not read `process.env` from application code outside typed config accessors.
-
-## Deep Agents Runtime
-
-Create executable harness tools from a config and `HarnessCore`, then pass them into the Deep Agents runtime:
-
-```ts
-const tools = createExecutableToolRegistry(agentConfig, harnessCore);
-const runtimeConfig = loadAgentRuntimeEnvironmentConfig();
-const checkpointSaver = createSqliteLangGraphCheckpointSaver('data/langgraph-checkpoints.sqlite');
-
-const runtime = createLangGraphDeepAgentRuntime({
-  apiKey: runtimeConfig.apiKey,
-  modelName: runtimeConfig.modelName,
-  tools,
-  checkpointSaver,
-});
-```
-
-When using the default runnable app, no manual checkpoint wiring is required. Setting `STORAGE_PROVIDER=sqlite` makes `createRunnableSalesAgentHarnessApp()` create a Bun-native SQLite LangGraph checkpointer from `SQLITE_DB_PATH` and pass it into Deep Agents automatically. The manual `checkpointSaver` option is for custom embedding paths that construct `createLangGraphDeepAgentRuntime()` directly.
-
-The runtime uses `deepagents` with `ChatOpenAI` and LangChain structured tools. Tool calls receive the active `agentSessionId` from the runtime request and delegate back into the harness. The model never receives direct Shopware, Store API, UCP, MCP, or adapter access.
-
-The runtime boundary exposes both `respond()` for the current chat path and a run lifecycle for longer integrations: `startRun()`, `getRun()`, `resumeRun()`, and `cancelRun()`. Each LangGraph invocation uses the harness `agentSessionId` as `configurable.thread_id`, so the SQLite checkpointer can persist native graph state across turns. The separate harness run store persists audit-friendly run envelopes and does not replace LangGraph checkpointing.
-
-## Running Locally
-
-Set the runtime and Shopware environment:
-
-```bash
-export OPENAI_API_KEY=...
-export SHOPWARE_BASE_URL=https://your-shop.example
-export SHOPWARE_STORE_API_ACCESS_KEY=...
-export SHOPWARE_DEFAULT_SALES_CHANNEL_ID=...
-export SHOPWARE_UCP_AGENT_PROFILE_URL=https://platform.example/.well-known/ucp
-export SHOPWARE_UCP_SIGNING_KEY_ID=platform-2026
-export SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK='{"kty":"EC","crv":"P-256","x":"...","y":"...","d":"...","kid":"platform-2026"}'
-export SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL=false
-```
-
-Optional environment:
-
-- `AGENT_CONFIG_PATH`, defaulting to `config/agents/demo-sales-agent.json`
-- `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
-- `AGENT_RUNTIME_PROVIDER`, currently `deep_agents`
-- `COMMERCE_ADAPTER_PROVIDER`, `shopware` by default, or `ucp_shopware`
-- `STORAGE_PROVIDER`, `memory` by default, or `sqlite`
-- `SQLITE_DB_PATH`, defaulting to `data/sales-agent-harness.sqlite` when SQLite storage is enabled. With the default runnable app, this database also stores native LangGraph checkpoints.
-- `SHOPWARE_UCP_SIGNING_KEY_ID` and `SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK`, required together for strict signed UCP requests
-- `SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL`, local-only escape hatch for HTTP profile URLs when Shopware plugin development mode is enabled
-- `HOST`, defaulting to `127.0.0.1`
-- `PORT`, defaulting to `3000`
-- `DEBUG_LOG_REQUEST_BODIES`, defaulting to `false`; opt-in request-body logging for local debugging
-
-Start the service:
-
-```bash
-bun run start
-```
-
-Create a session. The customer-facing path does not require a Shopware context token:
-
-```bash
-curl -X POST http://127.0.0.1:3000/sessions \
-  -H 'content-type: application/json' \
-  -d '{"channel":"customer_ui","customerContext":{"region":"DE"}}'
-```
-
-Then send a chat message:
-
-```bash
-curl -X POST http://127.0.0.1:3000/chat \
-  -H 'content-type: application/json' \
-  -d '{"agentSessionId":"session-id-from-create-session","message":"Find waterproof jackets"}'
-```
-
-The HTTP surface also exposes:
-
-- `GET /health`
-- `GET /examples/customer-ui`
-- `GET /.well-known/agent-card.json`
-- `POST /message:send`
-- `POST /commerce/customer`
-- `POST /commerce/a2a`
-- `POST /handoff/validate`
-
-The optional Shopware context token is accepted only at session creation from trusted merchant server/app integrations, stored server-side, sent to Store API as `sw-context-token`, and never returned in session, chat, handoff, or commerce responses. Customer-facing UIs should not ask the buyer for this token.
-
-## Checkout Handoff
-
-With the default `shopware` adapter, checkout is handoff-only. The harness creates a short-lived opaque handoff token and returns a `continueUrl` like:
-
-```text
-https://shop.example.test/agent-checkout?h=handoff_...
-```
-
-Raw Shopware context tokens stay server-side in session and handoff stores.
-
-With `COMMERCE_ADAPTER_PROVIDER=ucp_shopware`, the harness delegates handoff creation to the `ShopwareUcpAdapter`. That adapter reads the UCP cart, creates a UCP checkout session through the Agentic Commerce plugin, and returns the plugin's `continueUrl`, for example an embedded UCP checkout URL.
-
-## Automated UCP Checkout
-
-Automated selling is opt-in and only supported through the Shopware UCP adapter. To let the agent place a real order, configure all of the following:
-
-- `COMMERCE_ADAPTER_PROVIDER=ucp_shopware` or `COMMERCE_ADAPTER_PROVIDER=shopware-ucp`
-- include `completeCheckout` in the agent `enabledCapabilities`
-- set `policies.allowCheckoutCompletion` to `true`
-- keep `policies.requireHumanApprovalForCheckout` set to `false` for the demo flow
-
-The `completeCheckout` tool requires `explicitBuyerConfirmation: true`, buyer details, and a complete shipping address. Callers should include an `idempotencyKey`; reusing the same key for the same merchant/session returns the stored checkout result instead of creating a duplicate order. The harness first updates the UCP checkout session with:
-
-```json
-{
-  "idempotencyKey": "checkout-session-123-confirmation-1",
-  "buyer": {
-    "email": "buyer@example.test",
-    "firstName": "Ada",
-    "lastName": "Buyer",
-    "phoneNumber": "+49123456789"
-  },
-  "fulfillment": {
-    "type": "shipping",
-    "shippingAddress": {
-      "street": "Test Street 1",
-      "zipcode": "12345",
-      "city": "Berlin",
-      "countryCode": "DE"
-    }
-  }
-}
-```
-
-Then it calls:
-
-```http
-POST /ucp/v1/checkout-sessions/{checkoutId}/complete
-```
-
-This creates a real Shopware order through the Agentic Commerce plugin. Treat it as a research-preview path only. Do not use it for production selling without a separate production design for buyer authorization, payment handling, order limits, idempotency, audit review, risk controls, and operational ownership.
-
-### Non-prod full-checkout happy path
-
-Use this flow for a local or demo environment where real order creation is acceptable:
-
-1. Install and enable the Shopware Agentic Commerce UCP plugin for the target sales channel.
-2. Set `COMMERCE_ADAPTER_PROVIDER=ucp_shopware`.
-3. Include `completeCheckout` in `enabledCapabilities`.
-4. Set `policies.allowCheckoutCompletion` to `true`.
-5. Keep `policies.requireHumanApprovalForCheckout` set to `false` for the automated demo path.
-6. Use `STORAGE_PROVIDER=sqlite` so checkout idempotency records and LangGraph checkpoints survive app recreation.
-7. Create or obtain a UCP checkout session through `prepareCheckoutHandoff`.
-8. Call the `completeCheckout` tool/API with `explicitBuyerConfirmation: true`, buyer details, shipping address, and an `idempotencyKey`.
-
-Example direct commerce request:
-
-```bash
-curl -X POST http://127.0.0.1:3000/commerce/customer \
-  -H 'content-type: application/json' \
-  -d '{
-    "capability": "completeCheckout",
-    "agentSessionId": "session-id-from-create-session",
-    "checkoutId": "checkout-1",
-    "idempotencyKey": "checkout-1-confirmation-1",
-    "explicitBuyerConfirmation": true,
-    "buyer": {
-      "email": "buyer@example.test",
-      "firstName": "Ada",
-      "lastName": "Buyer"
-    },
-    "fulfillment": {
-      "type": "shipping",
-      "shippingAddress": {
-        "street": "Test Street 1",
-        "zipcode": "12345",
-        "city": "Berlin",
-        "countryCode": "DE"
-      }
-    }
-  }'
-```
-
-Expected response shape:
-
-```json
-{
-  "status": "ok",
-  "value": {
-    "status": "completed",
-    "orderId": "order-id-from-shopware",
-    "summary": {
-      "cartId": "checkout-1",
-      "items": [],
-      "subtotal": { "amount": 0, "currency": "EUR" },
-      "total": { "amount": 0, "currency": "EUR" },
-      "currency": "EUR"
-    }
-  }
-}
-```
-
-If the same merchant/session/idempotency key is submitted again, the harness returns the stored checkout result instead of attempting a duplicate completion.
-
-## Observability
-
-Structured audit events cover sessions, user requests, agent responses, tool calls, policy decisions, Shopware/UCP calls, cart changes, blocked actions, errors, checkout handoffs, and checkout completions. Events include merchant, agent, session, channel, capability, policy decision, data source, and timestamp fields where applicable.
-
-The default app uses in-memory stores for demos. Set `STORAGE_PROVIDER=sqlite` to persist sessions, handoff records, audit events, runtime run records, checkout idempotency keys, and native LangGraph checkpoints in one SQLite database. `SQLITE_DB_PATH` controls the database location and defaults to `data/sales-agent-harness.sqlite`.
-
-For the default runnable app, SQLite checkpointing is automatic: `createRunnableSalesAgentHarnessApp()` creates a Bun-native SQLite LangGraph checkpointer and passes it to Deep Agents. For custom embeddings that construct `createLangGraphDeepAgentRuntime()` directly, call `createSqliteLangGraphCheckpointSaver(databasePath)` and pass it as `checkpointSaver`.
-
-The SQLite-backed classes are exported for direct embedding:
-
-- `SqliteSessionStore`
-- `SqliteHandoffStore`
-- `SqliteAuditLogger`
-- `SqliteAgentRunStore`
-- `SqliteCheckoutIdempotencyStore`
-
-These implementations keep raw Shopware context tokens server-side while allowing sessions, handoff records, audit events, run records, and checkout idempotency records to survive process restarts.
-
-The app-level SQLite runtime smoke test covers this path with a fake Deep Agent: one app instance writes a LangGraph checkpoint through the runtime, a second app instance reopens the same SQLite database, and the runtime reads the checkpoint back through the configured `thread_id`.
-
-## Research Preview Limits
-
-This project is intentionally demo- and research-oriented, not a production selling system. Current known limits:
-
-- A2A support covers discovery and `message:send`; it does not yet implement the full task lifecycle, streaming, cancellation, auth, or conformance test suite.
-- Runtime runs are persisted as records and LangGraph checkpoints survive restarts, but active runs are still executed synchronously in-process rather than by a background worker queue.
-- Full checkout is UCP-only and opt-in; payment authorization, PSP tokenization, fraud/risk controls, and buyer-auth proof are not implemented here.
-- SQLite is the durable local store for demos; database migrations, backups, retention, and multi-instance locking strategy for production operation are not defined.
-- The public `agentProfile` customizes identity and A2A card metadata, but it does not grant capabilities or override policy.
-- No production authentication, rate limiting, tenant isolation hardening, or admin audit UI is included.
-
-## Future Integrations
-
-The research preview intentionally leaves these as future integrations:
-
-- Shopware MCP admin, diagnostic, and backoffice workflows
-- Checkout Gateway enforcement
-- Payment authorization protocols
-- Additional production checkout hardening such as payment mandates, PSP tokenization, and cross-process idempotency
-- Binding quotes
-- Custom discount negotiation
-- Customer account mutation
-- Additional ecommerce adapters beyond Shopware
+- [Running The Harness](docs/running.md): environment variables, Docker/Bun startup, smoke tests,
+  real-agent testing, A2A requests, and troubleshooting.
+- [Configuration](docs/configuration.md): agent profile, capability flags, policy config, commerce
+  adapter choice, UCP profile signing, and runtime/storage settings.
+- [Architecture](docs/architecture.md): request flow, module boundaries, runtime boundary, commerce
+  adapter boundary, and persistence structure.
+- [Checkout And UCP](docs/checkout.md): checkout handoff, automated UCP checkout, idempotency, and
+  non-production full-checkout testing.
+- [Observability](docs/observability.md): audit events, SQLite persistence, LangGraph checkpoints,
+  and exported store classes.
+- [Demo Journey](docs/demo-journey.md): a narrated merchant, customer, and A2A buyer-agent demo.
+- [Extending The Harness](docs/extending.md): how to add adapters, capabilities, policy rules,
+  runtimes, routes, storage, and observability sinks without bypassing the harness.
+- [A2A Buyer Agent Demo](examples/a2a-demo/README.md): standalone buyer-agent UI for local
+  agent-to-agent experiments.
 
 ## Development
 
@@ -823,3 +148,10 @@ bun run quality
 ```
 
 CI remains the final authority.
+
+## Research Preview Limits
+
+Current known limits are tracked in [Running The Harness](docs/running.md#research-preview-limits).
+The short version: A2A support is intentionally narrow, checkout completion is UCP-only and opt-in,
+SQLite is for durable local demos, and this repository does not include production authentication,
+tenant isolation, payment authorization, fraud controls, or an admin audit UI.

@@ -7,7 +7,7 @@ const demoPageBody = `
 <header class="hdr">
   <div>
     <div class="hdr-eye">Agent-to-Agent Protocol</div>
-    <div class="hdr-title">Buyer &times; Seller Negotiation</div>
+    <div class="hdr-title">Buyer Agent &times; Seller Agent</div>
   </div>
   <div class="hdr-badge">
     <div class="live-dot"></div>
@@ -18,7 +18,7 @@ const demoPageBody = `
 <div class="wrap">
 
   <div class="goal-section">
-    <label class="goal-label" for="goal">Procurement Goal</label>
+    <label class="goal-label" for="goal">Purchase Goal</label>
     <textarea
       id="goal"
       class="goal-input"
@@ -50,7 +50,7 @@ const demoPageBody = `
 
     <div class="acard seller" id="sc">
       <div class="ac-role">Seller Agent</div>
-      <div class="ac-name">Sales Agent Harness</div>
+      <div class="ac-name">Seller Agent</div>
       <div class="ac-ver">v0.1.0 &middot; Shopware</div>
       <div class="ac-row">
         <div class="sdot s on" id="sdot"></div>

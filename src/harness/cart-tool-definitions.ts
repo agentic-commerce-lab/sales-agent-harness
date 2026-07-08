@@ -17,7 +17,7 @@ export function createCreateCartTool(
 
   return {
     name: 'createCart',
-    description: 'Create a non-binding cart draft through the Seller Agent Harness.',
+    description: 'Create a non-binding cart draft through the Sales Agent Harness.',
     schema,
     execute: (input, context) => {
       const parsed = schema.parse(input);
@@ -34,7 +34,7 @@ export function createUpdateCartTool(
 
   return {
     name: 'updateCart',
-    description: 'Update a non-binding cart draft through the Seller Agent Harness.',
+    description: 'Update a non-binding cart draft through the Sales Agent Harness.',
     schema,
     execute: (input, context) => {
       const parsed = schema.parse(input);
@@ -55,7 +55,7 @@ export function createCartSummaryTool(
 
   return {
     name: 'getCartSummary',
-    description: 'Get a trusted cart summary through the Seller Agent Harness.',
+    description: 'Get a trusted cart summary through the Sales Agent Harness.',
     schema,
     execute: (input, context) => {
       const parsed = schema.parse(input);
@@ -75,7 +75,7 @@ export function createCheckoutHandoffTool(
 
   return {
     name: 'prepareCheckoutHandoff',
-    description: 'Prepare a non-binding checkout handoff through the Seller Agent Harness.',
+    description: 'Prepare a non-binding checkout handoff through the Sales Agent Harness.',
     schema,
     execute: (input, context) => {
       const parsed = schema.parse(input);

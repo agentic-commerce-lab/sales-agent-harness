@@ -2,9 +2,9 @@
 
 ## 1. Integration goal
 
-The Seller Agent Harness should use Shopware as the first real commerce backend for the MVP.
+The Sales Agent Harness should use Shopware as the first real commerce backend for the MVP.
 
-Shopware provides the commerce capabilities, such as catalog, cart, and checkout functionality. The Seller Agent Harness consumes and controls access to these capabilities. The sales agent itself should not call Shopware directly.
+Shopware provides the commerce capabilities, such as catalog, cart, and checkout functionality. The Sales Agent Harness consumes and controls access to these capabilities. The sales agent itself should not call Shopware directly.
 
 The goal is to allow the sales agent to act on behalf of a customer in a limited, safe, policy-controlled way: product discovery, product details, cart preparation, checkout handoff, and explicitly enabled checkout completion through a completion-capable adapter.
 
@@ -12,7 +12,7 @@ The goal is to allow the sales agent to act on behalf of a customer in a limited
 
 The agent must not access Shopware APIs directly.
 
-All Shopware communication should go through the Seller Agent Harness.
+All Shopware communication should go through the Sales Agent Harness.
 
 ```text
 Sales Agent
@@ -55,7 +55,7 @@ Shopware already exposes commerce capabilities. The seller agent should not be d
 
 ```text
 Shopware exposes commerce capabilities
-Seller Agent Harness consumes and controls them
+Sales Agent Harness consumes and controls them
 Sales Agent creates the customer or buyer-agent experience
 ```
 
@@ -187,7 +187,7 @@ If an external buyer agent interacts with the seller agent, the harness creates 
 ```text
 Buyer Agent
     -> A2A
-        -> Seller Agent Harness
+        -> Sales Agent Harness
             -> Shopware cart context
 ```
 
@@ -282,7 +282,7 @@ The flow:
 
 ```text
 Buyer Agent / A2A Client
-    -> Seller Agent Harness
+    -> Sales Agent Harness
         -> Shopware Store API
             -> Prepared cart / handoff record
                 -> A2A continueUrl
@@ -311,7 +311,7 @@ In the MVP, the Context Gateway should be used to:
 
 * receive the current storefront/customer context
 * pass the opaque handoff token to the app server
-* validate the handoff with the Seller Agent Harness
+* validate the handoff with the Sales Agent Harness
 * apply or recreate the prepared cart in the customer’s current context
 * redirect the customer to checkout
 
@@ -360,7 +360,7 @@ Checkout Gateway for checkout-time validation and restrictions
 
 ## 15. Technical adapter design
 
-The Seller Agent Harness should define its own internal commerce adapter contract.
+The Sales Agent Harness should define its own internal commerce adapter contract.
 
 Example:
 

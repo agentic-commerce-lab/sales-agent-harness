@@ -38,7 +38,7 @@ export const demoPageScript = `
   function appendMsg(side, text, toolCalls) {
     msgCount++;
     var cls  = side === 'buyer' ? 'fb' : 'fs';
-    var role = side === 'buyer' ? 'USER' : 'AGENT';
+    var role = side === 'buyer' ? 'BUYER AGENT' : 'SELLER AGENT';
     var id   = 'msg-' + side[0] + String(msgCount).padStart(3, '0');
     var time = ts();
 

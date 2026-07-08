@@ -19,7 +19,7 @@ describe('createLangGraphDeepAgentRuntime', () => {
       'searchProducts',
       'createCart',
     ]);
-    expect(created.deepAgentParams?.systemPrompt).toContain('Seller Agent Harness');
+    expect(created.deepAgentParams?.systemPrompt).toContain('Sales Agent Harness');
   });
 
   test('instructs the agent to sell only shop-returned products and state unknown data', async () => {

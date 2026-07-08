@@ -9,6 +9,14 @@ research-preview scope, capabilities, quick start, and known limits.
 - To get the demo running, start with the root [Quick Start](../README.md#quick-start), then follow
   the [Demo Journey](demo-journey.md). For buyer-agent testing, use the
   [A2A buyer demo](../examples/a2a-demo/README.md).
+- Use [Running The Harness](running.md) for the full local runbook, real-agent test flow, endpoint
+  list, A2A requests, and troubleshooting.
+- Use [Configuration](configuration.md) for agent profiles, capability flags, policy settings,
+  adapter choice, UCP profile signing, runtime settings, and storage settings.
+- Use [Checkout And UCP](checkout.md) for checkout handoff, automated UCP checkout, idempotency, and
+  non-production full-checkout testing.
+- Use [Observability](observability.md) for audit events, SQLite persistence, LangGraph checkpoints,
+  and exported store classes.
 - To customize the harness, read [Extending The Harness](extending.md). It covers where to add
   commerce adapters, capabilities, policy rules, runtimes, routes, storage, and observability
   without bypassing the harness.
