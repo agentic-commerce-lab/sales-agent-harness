@@ -1,14 +1,11 @@
 # Sales Agent Harness
 
-Sales Agent Harness is a merchant-side research preview for controlled agentic commerce
-experiments. It lets a merchant run a seller agent that can answer catalog questions, prepare
-carts, and create checkout handoffs through trusted commerce systems instead of letting a model
-invent product, price, stock, or checkout data.
-
-This is not a production selling system. It is intended for local demos, prototypes, evaluations,
-and protocol research. It does not include production authentication, tenant isolation, rate
-limiting, payment authorization, fraud controls, compliance review, admin operations, or an
-operations-grade persistence and deployment model.
+Sales Agent Harness is an open-source, framework-agnostic agentic commerce stack that acts as the
+merchant-owned control layer between an AI seller agent and the merchant's commerce systems. It
+lets the agent support product discovery, product details, cart preparation, cart summaries, and
+checkout handoff, without directly exposing raw commerce backends or letting the model decide
+prices, discounts, availability, checkout terms, or commercial commitments on its own. It ships
+with an integrated agent runtime built on LangGraph Deep Agents.
 
 ## What It Does
 
