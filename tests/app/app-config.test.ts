@@ -31,6 +31,9 @@ describe('loadApplicationEnvironmentConfig', () => {
         defaultSalesChannelId: 'sales-channel-1',
         ucpAllowInsecureProfileUrl: false,
       },
+      observability: {
+        langfuse: undefined,
+      },
     });
   });
 
@@ -82,6 +85,25 @@ describe('loadApplicationEnvironmentConfig', () => {
         DEBUG_LOG_REQUEST_BODIES: 'true',
       }).debugLogRequestBodies,
     ).toBe(true);
+  });
+});
+
+describe('loadApplicationEnvironmentConfig observability', () => {
+  test('loads Langfuse tracing config when all three LANGFUSE_* variables are set', () => {
+    const config = loadApplicationEnvironmentConfig({
+      ...baseEnvironment,
+      LANGFUSE_PUBLIC_KEY: 'pk-lf-test',
+      LANGFUSE_SECRET_KEY: 'sk-lf-test',
+      LANGFUSE_BASE_URL: 'https://langfuse.internal.example',
+    });
+
+    expect(config.observability).toEqual({
+      langfuse: {
+        publicKey: 'pk-lf-test',
+        secretKey: 'sk-lf-test',
+        baseUrl: 'https://langfuse.internal.example',
+      },
+    });
   });
 });
 
