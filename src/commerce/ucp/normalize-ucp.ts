@@ -139,13 +139,20 @@ function normalizeCartMoney(cart: UcpCart, currency: string) {
   const summary = cart.money_summary ?? cart.moneySummary;
 
   return {
-    subtotal: fromOptionalUcpMoney(summary?.subtotal) ??
-      totalByType(cart.totals, 'subtotal', currency) ?? { amount: 0, currency },
+    subtotal: moneyOfType(cart, summary?.subtotal, 'subtotal', currency) ?? { amount: 0, currency },
     shipping: normalizeCartShipping(cart, summary, currency),
-    tax: fromOptionalUcpMoney(summary?.tax) ?? totalByType(cart.totals, 'tax', currency),
-    total: fromOptionalUcpMoney(summary?.total) ??
-      totalByType(cart.totals, 'total', currency) ?? { amount: 0, currency },
+    tax: moneyOfType(cart, summary?.tax, 'tax', currency),
+    total: moneyOfType(cart, summary?.total, 'total', currency) ?? { amount: 0, currency },
   };
+}
+
+function moneyOfType(
+  cart: UcpCart,
+  summaryValue: UcpMoney | undefined,
+  type: string,
+  currency: string,
+): Money | undefined {
+  return fromOptionalUcpMoney(summaryValue) ?? totalByType(cart.totals, type, currency);
 }
 
 function normalizeCartShipping(
