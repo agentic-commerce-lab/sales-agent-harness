@@ -5,7 +5,13 @@ import {
   readString,
 } from '../shopware/shopware-store-api-readers.js';
 import { parseMoney, parseProduct } from './ucp-product-parsers.js';
-import type { UcpCart, UcpProduct, UcpTotal } from './ucp-types.js';
+import type {
+  UcpAp2Response,
+  UcpCart,
+  UcpProduct,
+  UcpTotal,
+  UcpX402Instructions,
+} from './ucp-types.js';
 
 export function parseCart(payload: unknown): UcpCart {
   const record = readRecord(payload);
@@ -13,7 +19,7 @@ export function parseCart(payload: unknown): UcpCart {
   return {
     id: readString(record.id, 'UCP cart id'),
     status: readOptionalString(record.status),
-    currency: typeof record.currency === 'string' ? record.currency : 'EUR',
+    currency: typeof record.currency === 'string' ? record.currency : 'USD',
     lineItems: parseLineItems(record.lineItems),
     line_items: parseLineItems(record.line_items),
     moneySummary: parseMoneySummary(record.moneySummary),
@@ -23,7 +29,36 @@ export function parseCart(payload: unknown): UcpCart {
     links: parseLinks(record.links),
     totals: parseTotals(record.totals),
     order: parseOrder(record.order),
+    x402: parseX402Instructions(record.x402),
+    ap2: parseAp2Response(record.ap2),
   };
+}
+
+function parseX402Instructions(payload: unknown): UcpX402Instructions | undefined {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return undefined;
+  }
+
+  const record = readRecord(payload);
+
+  return {
+    handler_id: readOptionalString(record.handler_id),
+    pay_url: readOptionalString(record.pay_url),
+    deep_link_code: readOptionalString(record.deep_link_code),
+    scheme: readOptionalString(record.scheme),
+    network: readOptionalString(record.network),
+    asset: readOptionalString(record.asset),
+    asset_symbol: readOptionalString(record.asset_symbol),
+    access_key: readOptionalString(record.access_key),
+  };
+}
+
+function parseAp2Response(payload: unknown): UcpAp2Response | undefined {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return undefined;
+  }
+
+  return { merchant_authorization: readOptionalString(readRecord(payload).merchant_authorization) };
 }
 
 function parseOrder(payload: unknown): { readonly id?: string | undefined } | undefined {

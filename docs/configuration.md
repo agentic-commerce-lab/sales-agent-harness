@@ -135,10 +135,17 @@ Shopware environment access is centralized in `src/env/shopware-config.ts`:
 - `SHOPWARE_STORE_API_ACCESS_KEY`
 - `SHOPWARE_DEFAULT_SALES_CHANNEL_ID`
 
-Deep Agents/OpenAI runtime access is centralized in `src/env/agent-runtime-config.ts`:
+Deep Agents runtime access is centralized in `src/env/agent-runtime-config.ts`. It supports two
+LLM providers, selected with `AGENT_MODEL_PROVIDER`:
 
-- `OPENAI_API_KEY`
-- `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
+- `openai` (default): requires `OPENAI_API_KEY`; `AGENT_RUNTIME_MODEL` defaults to `gpt-5-mini`.
+- `openrouter`: requires `OPENROUTER_API_KEY`; `AGENT_RUNTIME_MODEL` defaults to
+  `openai/gpt-5-mini` and can be any OpenRouter-hosted model id, for example
+  `anthropic/claude-3.5-sonnet`. `OPENROUTER_BASE_URL` optionally overrides the API base URL
+  (defaults to `https://openrouter.ai/api/v1`).
+
+Both providers speak the OpenAI chat completions API, so the runtime always constructs a single
+`ChatOpenAI` client, pointed at the provider's base URL and API key.
 
 When using the default runnable app, no manual checkpoint wiring is required. Setting
 `STORAGE_PROVIDER=sqlite` makes `createRunnableSalesAgentHarnessApp()` create a Bun-native SQLite

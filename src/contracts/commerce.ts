@@ -107,12 +107,27 @@ export interface FulfillmentInput {
   readonly shippingAddress: ShippingAddressInput;
 }
 
+/**
+ * AP2 checkout mandate credential relayed from the buyer's platform on
+ * checkout completion, rides in the request's top-level `ap2.checkout_mandate`
+ * field. Opaque to the harness: it forwards it to the shop for verification
+ * and never generates or inspects it, since only the buyer's platform has the
+ * authority to attest buyer consent. There is no separate payment-mandate
+ * instrument here — a payment-specific credential (e.g. x402's own signed
+ * authorization) rides through that payment method's own instrument, not a
+ * synthetic AP2-branded one.
+ */
+export interface Ap2PaymentMandate {
+  readonly checkoutMandate: string;
+}
+
 export interface CompleteCheckoutInput {
   readonly checkoutId: string;
   readonly idempotencyKey?: string | undefined;
   readonly buyer: BuyerInput;
   readonly fulfillment: FulfillmentInput;
   readonly executionContext?: CommerceExecutionContext;
+  readonly ap2Mandate?: Ap2PaymentMandate | undefined;
 }
 
 export interface ProductSearchResult {
@@ -133,12 +148,46 @@ export interface CartResult {
 export interface CheckoutHandoffResult {
   readonly summary: CartSummary;
   readonly continueUrl: string;
+  /** The UCP checkout session id, when the adapter creates one (ucp_shopware only). */
+  readonly checkoutId?: string | undefined;
+}
+
+/**
+ * Buyer-executed payment instructions relayed from the shop's completed
+ * checkout (x402 protocol: HTTP 402 handshake against payUrl, ownership
+ * proven via deepLinkCode). The harness only passes these through — payment
+ * execution stays a buyer-side action and remains a restricted action for
+ * the seller agent.
+ */
+export interface X402PaymentInstructions {
+  readonly handlerId: string;
+  readonly payUrl: string;
+  readonly deepLinkCode: string;
+  readonly scheme?: string | undefined;
+  readonly network?: string | undefined;
+  readonly asset?: string | undefined;
+  readonly assetSymbol?: string | undefined;
+  /** Public Store API client identification, not a credential. */
+  readonly accessKey?: string | undefined;
 }
 
 export interface CompletedCheckoutResult {
   readonly summary: CartSummary;
   readonly orderId?: string | undefined;
   readonly status: 'completed';
+  readonly x402?: X402PaymentInstructions | undefined;
+  /** JWS Detached Content signature proving the shop verified the AP2 mandate. */
+  readonly ap2MerchantAuthorization?: string | undefined;
+}
+
+/**
+ * The real terms of a checkout the seller has prepared but not yet
+ * completed — surfaced to the buyer ahead of completion so it can build an
+ * AP2 mandate that pins the actual transaction instead of guessing at it.
+ */
+export interface CheckoutTerms {
+  readonly checkoutId: string;
+  readonly total: Money;
 }
 
 export interface CommerceAdapter {

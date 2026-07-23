@@ -22,6 +22,7 @@ describe('loadApplicationEnvironmentConfig', () => {
         provider: 'memory',
       },
       runtime: {
+        provider: 'openai',
         apiKey: 'test-key',
         modelName: 'gpt-5-mini',
       },

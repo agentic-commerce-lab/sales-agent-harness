@@ -52,7 +52,7 @@ export function parseMoney(payload: unknown): UcpMoney | undefined {
 
   return {
     amount: record.amount,
-    currency: readOptionalString(record.currency) ?? 'EUR',
+    currency: readOptionalString(record.currency) ?? 'USD',
   };
 }
 

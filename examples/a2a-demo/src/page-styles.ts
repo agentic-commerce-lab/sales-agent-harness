@@ -115,6 +115,37 @@ export const demoPageStyles = `
     .tools { margin-top: 9px; border-top: 1px solid var(--border); padding-top: 7px; display: flex; flex-direction: column; gap: 3px; }
     .tool { display: flex; align-items: flex-start; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--t2); }
     .tpip { width: 4px; height: 4px; border-radius: 50%; background: var(--seller); flex-shrink: 0; margin-top: 4px; }
+    .tpip.mandate-pip { background: var(--buyer); }
+
+    /* Payment card */
+    .pay {
+      align-self: center; width: 100%; max-width: 76%;
+      border: 1px solid var(--seller-bd); background: var(--seller-bg);
+      border-radius: 9px; padding: 13px 16px;
+      opacity: 0; transform: translateY(6px); transition: opacity .28s, transform .28s;
+    }
+    .pay.vis { opacity: 1; transform: translateY(0); }
+    .pay.failed { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.08); }
+    .pay-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .pay-badge {
+      font-family: var(--mono); font-size: 10px; padding: 2px 6px; border-radius: 3px;
+      text-transform: uppercase; letter-spacing: .06em;
+      background: rgba(46,216,160,.12); color: var(--seller); border: 1px solid var(--seller-bd);
+    }
+    .pay.failed .pay-badge { background: rgba(239,68,68,.12); color: #FCA5A5; border-color: rgba(239,68,68,.3); }
+    .pay-title { font-weight: 600; font-size: 13.5px; }
+    .pay-ts { font-family: var(--mono); font-size: 10px; color: var(--t3); margin-left: auto; }
+    .pay-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+    .pay-cell { background: rgba(0,0,0,.2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; min-width: 0; }
+    .pay-lbl { font-family: var(--mono); font-size: 10px; color: var(--t3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+    .pay-val { font-family: var(--mono); font-size: 12px; color: var(--text); overflow-wrap: anywhere; }
+    .pay-val a { color: var(--buyer); text-decoration: none; }
+    .pay-val a:hover { text-decoration: underline; }
+    .pay-err { font-family: var(--mono); font-size: 12px; color: #FCA5A5; overflow-wrap: anywhere; }
+
+    /* AP2 mandate card (reuses .pay layout with a buyer-blue accent) */
+    .pay.ap2 { border-color: var(--buyer-bd); background: var(--buyer-bg); }
+    .ap2-badge { background: rgba(75,158,255,.12); color: var(--buyer); border: 1px solid var(--buyer-bd); }
 
     /* Error banner */
     .err-banner {

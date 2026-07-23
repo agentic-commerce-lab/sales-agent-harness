@@ -256,6 +256,7 @@ function createSessionChatApp(calls: unknown[]): SalesAgentHttpApp {
       handle: async (input) => ({ status: 'ok', value: input }),
     },
     validateCheckoutHandoff: () => ({ status: 'not_found' as const }),
+    recordAp2Mandate: () => {},
   };
 }
 
@@ -290,6 +291,7 @@ function createCommerceRoutingApp(): SalesAgentHttpApp {
       handoffId,
       summary: createCartSummary(),
     }),
+    recordAp2Mandate: () => {},
   };
 }
 

@@ -35,8 +35,10 @@ export function createSalesAgentHarnessApp(
     harness,
     sessionStore: context.sessionStore,
     createSession: (sessionInput) => createSession(input, context, sessionInput),
-    chat: (chatInput) => chat(input, context, runtime, chatInput),
+    chat: (chatInput) => chat(input, context, runtime, harness, chatInput),
     validateCheckoutHandoff: (handoffInput) =>
       validateCheckoutHandoff(input, context, handoffInput),
+    recordAp2Mandate: (agentSessionId, mandate) =>
+      harness.recordAp2Mandate(agentSessionId, mandate),
   };
 }

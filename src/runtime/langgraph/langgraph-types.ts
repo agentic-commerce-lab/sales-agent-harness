@@ -63,6 +63,7 @@ export interface DeepAgentFactoryParams {
 export interface ModelFactoryInput {
   readonly apiKey: string;
   readonly model: string;
+  readonly baseUrl?: string | undefined;
 }
 
 export interface RuntimeToolExecutionContext {
@@ -79,6 +80,7 @@ export interface ExecutableLangGraphRuntimeTool {
 export interface CreateLangGraphDeepAgentRuntimeInput {
   readonly apiKey: string;
   readonly modelName: string;
+  readonly baseUrl?: string | undefined;
   readonly tools: readonly ExecutableLangGraphRuntimeTool[];
   readonly systemPrompt?: string | undefined;
   readonly createDeepAgent?: (params: DeepAgentFactoryParams) => DeepAgentGraph;

@@ -64,6 +64,7 @@ export function createRunnableSalesAgentHarnessApp(
       createLangGraphDeepAgentRuntime({
         apiKey: input.environment.runtime.apiKey,
         modelName: input.environment.runtime.modelName,
+        baseUrl: input.environment.runtime.baseUrl,
         tools,
         systemPrompt: agentConfig.systemPrompt,
         ...(checkpointSaver ? { checkpointSaver } : {}),

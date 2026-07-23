@@ -1,10 +1,11 @@
 import type { CommerceEnvironmentConfig } from '../../env/commerce-config.js';
-import { discoverUcpShoppingEndpoint } from './ucp-discovery.js';
+import { discoverUcpShoppingService, type UcpDiscoveredService } from './ucp-discovery.js';
 import { escapeSfString, UcpHttpSigner } from './ucp-http-signature.js';
 
 export interface UcpHttpClient {
   readonly baseUrl: string;
   discoverEndpoint(): Promise<string>;
+  supportsAp2Mandate(): Promise<boolean>;
   requestJson(method: string, url: string, body?: unknown): Promise<unknown>;
 }
 
@@ -15,14 +16,17 @@ export function createUcpHttpClient(
   const baseUrl = config.baseUrl.replace(/\/$/, '');
   const agentProfileUrl = config.ucpAgentProfileUrl ?? `${baseUrl}/.well-known/ucp`;
   const signer = createSigner(config);
-  let endpointPromise: Promise<string> | undefined;
+  let servicePromise: Promise<UcpDiscoveredService> | undefined;
+
+  const discoverService = (): Promise<UcpDiscoveredService> => {
+    servicePromise ??= discoverUcpShoppingService(fetchImplementation, baseUrl);
+    return servicePromise;
+  };
 
   return {
     baseUrl,
-    discoverEndpoint: () => {
-      endpointPromise ??= discoverUcpShoppingEndpoint(fetchImplementation, baseUrl);
-      return endpointPromise;
-    },
+    discoverEndpoint: async () => (await discoverService()).endpoint,
+    supportsAp2Mandate: async () => (await discoverService()).supportsAp2Mandate,
     requestJson: (method, url, body) =>
       requestJson({ fetchImplementation, agentProfileUrl, signer }, method, url, body),
   };
@@ -54,7 +58,7 @@ async function requestJson(
   const parsedUrl = new URL(url);
   const bodyString = body === undefined ? undefined : JSON.stringify(body);
   const headers = createHeaders(context.agentProfileUrl, bodyString);
-  signHeaders(context.signer, method, parsedUrl, headers, bodyString);
+  signHeaders(context.signer, method, parsedUrl, headers, bodyString ?? '');
   const response = await context.fetchImplementation(parsedUrl, {
     method,
     headers: Object.fromEntries(headers.entries()),
@@ -89,18 +93,15 @@ function signHeaders(
   method: string,
   url: URL,
   headers: Map<string, string>,
-  body: string | undefined,
+  body: string,
 ): void {
-  const signatureHeaders = signer?.sign({ method, url, headers, body });
+  const signatureHeaders = signer?.sign({ method, url, body });
 
   if (!signatureHeaders) {
     return;
   }
 
-  if (signatureHeaders.contentDigest) {
-    headers.set('content-digest', signatureHeaders.contentDigest);
-  }
-
+  headers.set('content-digest', signatureHeaders.contentDigest);
   headers.set('signature-input', signatureHeaders.signatureInput);
   headers.set('signature', signatureHeaders.signature);
 }

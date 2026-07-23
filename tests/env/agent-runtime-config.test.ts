@@ -10,6 +10,7 @@ describe('loadAgentRuntimeEnvironmentConfig', () => {
     });
 
     expect(config).toEqual({
+      provider: 'openai',
       apiKey: 'test-key',
       modelName: 'gpt-5-mini',
     });
@@ -21,6 +22,42 @@ describe('loadAgentRuntimeEnvironmentConfig', () => {
     );
     expect(() => loadAgentRuntimeEnvironmentConfig({})).toThrow(
       'Missing required environment variable OPENAI_API_KEY',
+    );
+  });
+
+  test('loads OpenRouter-backed runtime config with its own defaults', () => {
+    const config = loadAgentRuntimeEnvironmentConfig({
+      AGENT_MODEL_PROVIDER: 'openrouter',
+      OPENROUTER_API_KEY: 'or-test-key',
+    });
+
+    expect(config).toEqual({
+      provider: 'openrouter',
+      apiKey: 'or-test-key',
+      modelName: 'openai/gpt-5-mini',
+      baseUrl: 'https://openrouter.ai/api/v1',
+    });
+  });
+
+  test('allows overriding the OpenRouter model and base URL', () => {
+    const config = loadAgentRuntimeEnvironmentConfig({
+      AGENT_MODEL_PROVIDER: 'openrouter',
+      OPENROUTER_API_KEY: 'or-test-key',
+      OPENROUTER_BASE_URL: 'https://proxy.example/api/v1',
+      AGENT_RUNTIME_MODEL: 'anthropic/claude-3.5-sonnet',
+    });
+
+    expect(config.modelName).toBe('anthropic/claude-3.5-sonnet');
+    expect(config.baseUrl).toBe('https://proxy.example/api/v1');
+  });
+
+  test('rejects missing OpenRouter API key and unsupported providers', () => {
+    expect(() => loadAgentRuntimeEnvironmentConfig({ AGENT_MODEL_PROVIDER: 'openrouter' })).toThrow(
+      'Missing required environment variable OPENROUTER_API_KEY',
+    );
+
+    expect(() => loadAgentRuntimeEnvironmentConfig({ AGENT_MODEL_PROVIDER: 'other' })).toThrow(
+      'Unsupported AGENT_MODEL_PROVIDER other',
     );
   });
 });

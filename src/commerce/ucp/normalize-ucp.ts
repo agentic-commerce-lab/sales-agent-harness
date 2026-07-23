@@ -7,7 +7,7 @@ import type {
 } from '../../contracts/commerce.js';
 import type { UcpCart, UcpLineItem, UcpMoney, UcpProduct } from './ucp-types.js';
 
-const defaultCurrency = 'EUR';
+const defaultCurrency = 'USD';
 
 // UCP money amounts are integers in minor currency units (for example cents),
 // while the harness Money contract uses decimal major units like the Shopware
@@ -98,9 +98,12 @@ export function readUcpContinueUrl(checkout: UcpCart): string | undefined {
   return undefined;
 }
 
-function normalizeProductPrice(product: UcpProduct): Money | undefined {
+function normalizeProductPrice(
+  product: UcpProduct,
+  fallbackCurrency: string = defaultCurrency,
+): Money | undefined {
   if (typeof product.price === 'number') {
-    return fromMinorUnits(product.price, defaultCurrency);
+    return fromMinorUnits(product.price, fallbackCurrency);
   }
 
   if (product.price) {
@@ -158,7 +161,10 @@ function normalizeCartShipping(
 }
 
 function lineItemUnitPrice(item: UcpLineItem, cartCurrency: string): Money {
-  const productPrice = normalizeProductPrice(item.item ?? { id: item.id ?? 'unknown-product' });
+  const productPrice = normalizeProductPrice(
+    item.item ?? { id: item.id ?? 'unknown-product' },
+    cartCurrency,
+  );
 
   return (
     fromOptionalUcpMoney(item.unit_price ?? item.unitPrice) ??

@@ -1,4 +1,9 @@
-import type { BuyerInput, CartItemInput, FulfillmentInput } from '../../contracts/commerce.js';
+import type {
+  Ap2PaymentMandate,
+  BuyerInput,
+  CartItemInput,
+  FulfillmentInput,
+} from '../../contracts/commerce.js';
 
 export interface UcpMoney {
   readonly amount: number;
@@ -58,6 +63,25 @@ export interface UcpCart {
   readonly links?: readonly { readonly rel?: string; readonly href?: string }[] | undefined;
   readonly totals?: readonly UcpTotal[] | undefined;
   readonly order?: { readonly id?: string | undefined } | undefined;
+  readonly x402?: UcpX402Instructions | undefined;
+  readonly ap2?: UcpAp2Response | undefined;
+}
+
+/** Wire shape of the x402 extension object on completed UCP checkouts. */
+export interface UcpX402Instructions {
+  readonly handler_id?: string | undefined;
+  readonly pay_url?: string | undefined;
+  readonly deep_link_code?: string | undefined;
+  readonly scheme?: string | undefined;
+  readonly network?: string | undefined;
+  readonly asset?: string | undefined;
+  readonly asset_symbol?: string | undefined;
+  readonly access_key?: string | undefined;
+}
+
+/** Wire shape of the ap2 extension object on completed UCP checkouts. */
+export interface UcpAp2Response {
+  readonly merchant_authorization?: string | undefined;
 }
 
 export interface UcpMoneySummary {
@@ -96,6 +120,9 @@ export interface UcpClient {
     readonly buyer: BuyerInput;
     readonly fulfillment: FulfillmentInput;
   }): Promise<UcpCart>;
-  completeCheckout(input: { readonly checkoutId: string }): Promise<UcpCart>;
+  completeCheckout(input: {
+    readonly checkoutId: string;
+    readonly ap2Mandate?: Ap2PaymentMandate | undefined;
+  }): Promise<UcpCart>;
   getEmbeddedCheckoutUrl(checkoutId: string): string;
 }

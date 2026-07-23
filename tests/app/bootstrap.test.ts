@@ -45,6 +45,7 @@ test('createRunnableSalesAgentHarnessApp uses the Shopware environment URL for c
         provider: 'memory',
       },
       runtime: {
+        provider: 'openai',
         apiKey: 'test-key',
         modelName: 'gpt-5-mini',
       },
@@ -90,6 +91,7 @@ test('createRunnableSalesAgentHarnessApp can use Agentic Commerce UCP checkout h
         provider: 'memory',
       },
       runtime: {
+        provider: 'openai',
         apiKey: 'test-key',
         modelName: 'gpt-5-mini',
       },
@@ -138,6 +140,7 @@ test('createRunnableSalesAgentHarnessApp can use SQLite app storage', () => {
         sqlitePath,
       },
       runtime: {
+        provider: 'openai',
         apiKey: 'test-key',
         modelName: 'gpt-5-mini',
       },
@@ -168,6 +171,7 @@ test('createRunnableSalesAgentHarnessApp can use SQLite app storage', () => {
         sqlitePath,
       },
       runtime: {
+        provider: 'openai',
         apiKey: 'test-key',
         modelName: 'gpt-5-mini',
       },
@@ -204,6 +208,7 @@ test('createRunnableSalesAgentHarnessApp wires LangGraph checkpointing to SQLite
         sqlitePath,
       },
       runtime: {
+        provider: 'openai',
         apiKey: 'test-key',
         modelName: 'gpt-5-mini',
       },
@@ -370,6 +375,7 @@ function createSqliteEnvironment(sqlitePath: string) {
       sqlitePath,
     },
     runtime: {
+      provider: 'openai' as const,
       apiKey: 'test-key',
       modelName: 'gpt-5-mini',
     },

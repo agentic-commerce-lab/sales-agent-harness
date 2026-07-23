@@ -1,5 +1,13 @@
+import { type Ap2Mandate, createAp2Mandate } from './ap2-mandate.js';
 import { createBuyerPrompt, DONE_SIGNAL } from './buyer-prompt.js';
-import { asArray, asRecord, callSellerA2A, readString } from './seller-client.js';
+import {
+  asArray,
+  asRecord,
+  type CheckoutTerms,
+  callSellerA2A,
+  readString,
+} from './seller-client.js';
+import { payWithX402, type X402PaymentOutcome } from './x402-payment.js';
 
 export interface ConversationEntry {
   role: 'buyer' | 'seller';
@@ -11,6 +19,8 @@ export interface TurnInput {
   goal: string;
   contextId?: string;
   history: ConversationEntry[];
+  /** Checkout terms the seller reported on a previous turn, if any. */
+  checkoutTerms?: CheckoutTerms;
 }
 
 export type TurnResult =
@@ -21,6 +31,10 @@ export type TurnResult =
       sellerResponse: string;
       toolCalls: string[];
       contextId: string;
+      payment?: X402PaymentOutcome;
+      ap2Mandate: Ap2Mandate;
+      ap2MerchantAuthorization?: string;
+      checkoutTerms?: CheckoutTerms;
     };
 
 export async function runTurn(input: TurnInput): Promise<TurnResult> {
@@ -30,7 +44,16 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     return { done: true };
   }
 
-  const sellerResult = await callSellerA2A(buyerMessage, input.contextId);
+  // Attached to every outbound message so it is already on the session
+  // whenever the seller's LLM decides to call completeCheckout — the
+  // harness never asks the model to supply one, see recordAp2Mandate.
+  const ap2Mandate = createAp2Mandate({
+    contextId: input.contextId,
+    goal: input.goal,
+    ...(input.checkoutTerms ? { checkoutTerms: input.checkoutTerms } : {}),
+  });
+  const sellerResult = await callSellerA2A(buyerMessage, input.contextId, ap2Mandate);
+  const payment = sellerResult.x402 ? await payWithX402(sellerResult.x402) : undefined;
 
   return {
     done: false,
@@ -38,36 +61,75 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     sellerResponse: sellerResult.message,
     toolCalls: sellerResult.toolCalls,
     contextId: sellerResult.contextId,
+    ap2Mandate,
+    ...(sellerResult.ap2MerchantAuthorization
+      ? { ap2MerchantAuthorization: sellerResult.ap2MerchantAuthorization }
+      : {}),
+    ...(payment ? { payment } : {}),
+    checkoutTerms: sellerResult.checkoutTerms ?? input.checkoutTerms,
   };
+}
+
+interface BuyerModelConfig {
+  readonly baseUrl: string;
+  readonly apiKey: string;
+  readonly model: string;
 }
 
 export async function decideBuyerMessage(
   goal: string,
   history: ConversationEntry[],
 ): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
+  const config = resolveBuyerModelConfig();
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch(`${config.baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${config.apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: createCompletionBody(goal, history),
+    body: createCompletionBody(config.model, goal, history),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`OpenAI error ${res.status}: ${err}`);
+    throw new Error(`${config.baseUrl} error ${res.status}: ${err}`);
   }
 
   return parseCompletionText(await res.json());
 }
 
-function createCompletionBody(goal: string, history: ConversationEntry[]): string {
-  return JSON.stringify({
+function resolveBuyerModelConfig(): BuyerModelConfig {
+  const provider = process.env.BUYER_MODEL_PROVIDER ?? 'openai';
+
+  if (provider === 'openrouter') {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set');
+
+    return {
+      baseUrl: process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
+      apiKey,
+      model: process.env.BUYER_MODEL ?? 'openai/gpt-5-mini',
+    };
+  }
+
+  if (provider !== 'openai') {
+    throw new Error(`Unsupported BUYER_MODEL_PROVIDER ${provider}`);
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
+
+  return {
+    baseUrl: 'https://api.openai.com/v1',
+    apiKey,
     model: process.env.BUYER_MODEL ?? 'gpt-5-mini',
+  };
+}
+
+function createCompletionBody(model: string, goal: string, history: ConversationEntry[]): string {
+  return JSON.stringify({
+    model,
     messages: [
       { role: 'system', content: createBuyerPrompt(goal) },
       {

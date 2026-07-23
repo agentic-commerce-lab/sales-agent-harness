@@ -42,6 +42,7 @@ describe('UcpAdapter', () => {
 
     expect(handoff.continueUrl).toBe('https://shop.example.test/ucp/embedded/checkout/checkout-1');
     expect(handoff.summary.cartId).toBe('cart-1');
+    expect(handoff.checkoutId).toBe('checkout-1');
     expect(JSON.stringify(handoff)).not.toContain('secret-context-token');
   });
 
@@ -60,9 +61,122 @@ describe('UcpAdapter', () => {
 
     expect(completed.summary.cartId).toBe('checkout-1');
     expect(completed.orderId).toBe('order-1');
+    expect(completed.x402).toBeUndefined();
     expect(JSON.stringify(completed)).not.toContain('secret-context-token');
   });
+});
 
+describe('UcpAdapter x402 passthrough', () => {
+  test('passes x402 payment instructions through from completed checkouts', async () => {
+    const adapter = new UcpAdapter({
+      client: {
+        ...createAdapterClient(),
+        completeCheckout: async () => ({
+          id: 'checkout-1',
+          currency: 'USD',
+          status: 'completed',
+          order: { id: 'order-1' },
+          x402: {
+            handler_id: 'com.shopware.x402',
+            pay_url: 'https://shop.example.test/store-api/x402/order/order-1/pay',
+            deep_link_code: 'deep-link-code-1',
+            scheme: 'exact',
+            network: 'base-sepolia',
+            asset: '0xasset',
+            asset_symbol: 'USDC',
+            access_key: 'SWSC-ACCESS-KEY',
+          },
+        }),
+      },
+    });
+
+    const completed = await adapter.completeCheckout({
+      checkoutId: 'checkout-1',
+      buyer: createBuyer(),
+      fulfillment: createFulfillment(),
+    });
+
+    expect(completed.x402).toEqual({
+      handlerId: 'com.shopware.x402',
+      payUrl: 'https://shop.example.test/store-api/x402/order/order-1/pay',
+      deepLinkCode: 'deep-link-code-1',
+      scheme: 'exact',
+      network: 'base-sepolia',
+      asset: '0xasset',
+      assetSymbol: 'USDC',
+      accessKey: 'SWSC-ACCESS-KEY',
+    });
+  });
+
+  test('omits x402 instructions when the completion response lacks the ownership proof', async () => {
+    const adapter = new UcpAdapter({
+      client: {
+        ...createAdapterClient(),
+        completeCheckout: async () => ({
+          id: 'checkout-1',
+          currency: 'USD',
+          status: 'completed',
+          order: { id: 'order-1' },
+          x402: { pay_url: 'https://shop.example.test/pay' },
+        }),
+      },
+    });
+
+    const completed = await adapter.completeCheckout({
+      checkoutId: 'checkout-1',
+      buyer: createBuyer(),
+      fulfillment: createFulfillment(),
+    });
+
+    expect(completed.x402).toBeUndefined();
+  });
+});
+
+describe('UcpAdapter AP2 mandate passthrough', () => {
+  test('forwards the ap2Mandate to the client and surfaces the merchant authorization', async () => {
+    let receivedMandate: unknown;
+    const adapter = new UcpAdapter({
+      client: {
+        ...createAdapterClient(),
+        completeCheckout: async (input) => {
+          receivedMandate = input.ap2Mandate;
+
+          return {
+            id: 'checkout-1',
+            currency: 'USD',
+            status: 'completed',
+            order: { id: 'order-1' },
+            ap2: { merchant_authorization: 'merchant-authorization-jws' },
+          };
+        },
+      },
+    });
+
+    const completed = await adapter.completeCheckout({
+      checkoutId: 'checkout-1',
+      buyer: createBuyer(),
+      fulfillment: createFulfillment(),
+      ap2Mandate: { checkoutMandate: 'checkout-mandate-jwt' },
+    });
+
+    expect(receivedMandate).toEqual({ checkoutMandate: 'checkout-mandate-jwt' });
+    expect(completed.ap2MerchantAuthorization).toBe('merchant-authorization-jws');
+  });
+
+  test('omits ap2MerchantAuthorization when the shop does not return one', async () => {
+    const adapter = new UcpAdapter({ client: createAdapterClient() });
+
+    const completed = await adapter.completeCheckout({
+      checkoutId: 'checkout-1',
+      buyer: createBuyer(),
+      fulfillment: createFulfillment(),
+    });
+
+    expect(completed.ap2MerchantAuthorization).toBeUndefined();
+  });
+});
+
+describe('UcpAdapter error handling', () => {
   test('includes UCP checkout failure details in adapter errors', async () => {
     const adapter = new UcpAdapter({
       client: {

@@ -1,3 +1,4 @@
+import type { HarnessCore } from '../harness/harness-core.js';
 import type { AgentRuntime, AgentRuntimeResponse } from '../runtime/agent-runtime.js';
 import { recordAppAudit } from './sales-agent-app-audit.js';
 import type {
@@ -10,6 +11,7 @@ export async function chat(
   input: CreateSalesAgentHarnessAppInput,
   context: AppContext,
   runtime: AgentRuntime,
+  harness: HarnessCore,
   chatInput: ChatInput,
 ): Promise<AgentRuntimeResponse> {
   const session = context.sessionStore.getSession(
@@ -30,5 +32,12 @@ export async function chat(
   context.conversationStore.appendAssistantMessage(chatInput.agentSessionId, response.message);
   recordAppAudit(context.auditLogger, session, 'agent_response', context.now);
 
-  return response;
+  const completedCheckout = harness.takeCompletedCheckout(chatInput.agentSessionId);
+  const pendingCheckoutTerms = harness.peekPendingCheckoutTerms(chatInput.agentSessionId);
+
+  return {
+    ...response,
+    ...(completedCheckout ? { completedCheckout } : {}),
+    ...(pendingCheckoutTerms ? { pendingCheckoutTerms } : {}),
+  };
 }

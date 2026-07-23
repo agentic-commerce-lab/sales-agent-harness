@@ -23,5 +23,14 @@ export const sendMessageSchema = z.object({
   message: a2aMessageSchema,
 });
 
+/**
+ * AP2 checkout mandate credential the buyer's platform attaches to an inbound
+ * message ahead of checkout completion (see ucp.dev/documentation/ucp-and-ap2).
+ * Validated defensively since it comes straight from the remote buyer agent.
+ */
+export const ap2MandateMetadataSchema = z.object({
+  checkoutMandate: z.string().min(1),
+});
+
 export type A2aMessage = z.infer<typeof a2aMessageSchema>;
 export type A2aPart = z.infer<typeof a2aPartSchema>;

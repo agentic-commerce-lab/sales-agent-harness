@@ -1,3 +1,4 @@
+import type { CheckoutTerms, CompletedCheckoutResult } from '../contracts/commerce.js';
 import type { HarnessToolDefinition } from '../harness/tool-registry.js';
 
 export interface AgentRuntimeMessage {
@@ -14,6 +15,10 @@ export interface AgentRuntimeInput {
 export interface AgentRuntimeResponse {
   readonly message: string;
   readonly toolCalls: readonly string[];
+  /** Structured result of a checkout completed during this turn, if any. */
+  readonly completedCheckout?: CompletedCheckoutResult | undefined;
+  /** Real terms of a checkout prepared but not yet completed, if any. */
+  readonly pendingCheckoutTerms?: CheckoutTerms | undefined;
 }
 
 export type AgentRunStatus = 'running' | 'completed' | 'failed' | 'cancelled';

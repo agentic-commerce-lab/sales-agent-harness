@@ -32,9 +32,18 @@ function createModel(input: CreateLangGraphDeepAgentRuntimeInput): DeepAgentMode
   const modelInput = {
     apiKey: input.apiKey,
     model: input.modelName,
+    baseUrl: input.baseUrl,
   };
 
-  return input.createModel ? input.createModel(modelInput) : new ChatOpenAI(modelInput);
+  if (input.createModel) {
+    return input.createModel(modelInput);
+  }
+
+  return new ChatOpenAI({
+    apiKey: modelInput.apiKey,
+    model: modelInput.model,
+    ...(modelInput.baseUrl ? { configuration: { baseURL: modelInput.baseUrl } } : {}),
+  });
 }
 
 function defaultCreateDeepAgent(params: DeepAgentFactoryParams): DeepAgentGraph {

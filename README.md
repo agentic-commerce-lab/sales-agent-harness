@@ -53,6 +53,9 @@ Use this path for a local smoke test against a real Shopware Store API.
    PORT=3000
    ```
 
+   To run the model through OpenRouter instead of OpenAI directly, set `AGENT_MODEL_PROVIDER=openrouter`
+   and `OPENROUTER_API_KEY` instead of `OPENAI_API_KEY` — see [Configuration](docs/configuration.md).
+
 3. Start with Docker:
 
    ```bash

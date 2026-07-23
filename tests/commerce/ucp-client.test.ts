@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test';
+import { createPublicKey, verify } from 'node:crypto';
 
 import { FetchUcpClient } from '../../src/commerce/ucp/ucp-client.js';
 import { createUcpPlatformProfile } from '../../src/commerce/ucp/ucp-platform-profile.js';
 import {
+  ap2CapableProfile,
   assertCompleteCheckoutRequest,
   assertCreateCheckoutRequest,
   assertGetCheckoutRequest,
@@ -38,6 +40,45 @@ describe('FetchUcpClient', () => {
     assertGetCheckoutRequest(requests);
     assertUpdateCheckoutRequest(requests);
     assertCompleteCheckoutRequest(requests);
+  });
+});
+
+describe('FetchUcpClient AP2 mandates', () => {
+  test('carries the checkout mandate under ap2 without a payment instrument', async () => {
+    const { client, requests } = createRecordingUcpClient(ap2CapableProfile);
+
+    await client.completeCheckout({
+      checkoutId: 'checkout-1',
+      ap2Mandate: { checkoutMandate: 'checkout-mandate-jwt' },
+    });
+
+    expect(requests[0]?.url).toBe(
+      'https://shop.example.test/ucp/v1/checkout-sessions/checkout-1/complete',
+    );
+    expect(requests[0]?.body).toEqual({
+      payment: { instruments: [] },
+      ap2: { checkout_mandate: 'checkout-mandate-jwt' },
+    });
+  });
+
+  test('omits the ap2 extension and sends empty instruments without a mandate', async () => {
+    const { client, requests } = createRecordingUcpClient();
+
+    await client.completeCheckout({ checkoutId: 'checkout-1' });
+
+    expect(requests[0]?.body).toEqual({ payment: { instruments: [] } });
+  });
+
+  test('fails loudly instead of silently dropping a mandate the shop cannot verify', async () => {
+    const { client } = createRecordingUcpClient(minimalProfile);
+
+    await expectRejectsWith(
+      client.completeCheckout({
+        checkoutId: 'checkout-1',
+        ap2Mandate: { checkoutMandate: 'checkout-mandate-jwt' },
+      }),
+      'does not advertise dev.ucp.shopping.ap2_mandate support',
+    );
   });
 });
 
@@ -208,12 +249,44 @@ describe('FetchUcpClient signing', () => {
       'sha-256=:xZpldSE/jTNNVo8XMFRmkL4Ev/M0rjUNbN08cQmZnfQ=:',
     );
     expect(headers?.get('signature-input')).toMatch(
-      /^sig1=\("@method" "@authority" "@path" "ucp-agent" "idempotency-key" "content-digest" "content-type"\);created=\d+;keyid="platform-test-key"$/,
+      /^sig1=\("@method" "@target-uri" "content-digest"\);created=\d+;expires=\d+;keyid="platform-test-key";alg="ES256"$/,
     );
     expect(headers?.get('signature')).toMatch(/^sig1=:[A-Za-z0-9+/]+=*:/);
     expect(requests[0]?.body).toBe('{"query":"jacket","limit":3}');
+    expect(
+      verifiesAsDerEcdsaSignature(headers, 'https://shop.example.test/ucp/v1/catalog/search'),
+    ).toBe(true);
   });
 });
+
+/**
+ * The shop's verifier (ucp-php-sdk) uses PHP's openssl_verify, which expects
+ * DER-encoded ECDSA signatures over exactly this base string — confirm we
+ * actually produce something a real verifier would accept, not just a
+ * plausibly-shaped header.
+ */
+function verifiesAsDerEcdsaSignature(headers: Headers | undefined, targetUri: string): boolean {
+  const signatureInput = headers?.get('signature-input') ?? '';
+  const signatureParams = signatureInput.slice('sig1='.length);
+  const signatureBase = [
+    '"@method": POST',
+    `"@target-uri": ${targetUri}`,
+    `"content-digest": ${headers?.get('content-digest')}`,
+    `"@signature-params": ${signatureParams}`,
+  ].join('\n');
+  const signatureBase64 = headers?.get('signature')?.match(/^sig1=:(.+):$/)?.[1] ?? '';
+  const publicKey = createPublicKey({
+    key: { kty: 'EC', crv: 'P-256', x: testPrivateJwk.x, y: testPrivateJwk.y },
+    format: 'jwk',
+  });
+
+  return verify(
+    'sha256',
+    Buffer.from(signatureBase),
+    publicKey,
+    Buffer.from(signatureBase64, 'base64'),
+  );
+}
 
 describe('createUcpPlatformProfile', () => {
   test('creates a UCP platform profile with a public signing key only', () => {
@@ -236,6 +309,23 @@ describe('createUcpPlatformProfile', () => {
     ]);
     expect(profile.ucp.capabilities['dev.ucp.shopping.catalog'][0]?.version).toBe('2026-04-08');
     expect(JSON.stringify(profile)).not.toContain('"d"');
+  });
+
+  test('advertises AP2 mandate support extending checkout, so the shop negotiates it', () => {
+    const profile = createUcpPlatformProfile({
+      profileUrl: 'https://platform.example/.well-known/ucp',
+      signingKeyId: 'platform-test-key',
+      signingPrivateKeyJwk: JSON.stringify(testPrivateJwk),
+    });
+
+    expect(profile.ucp.capabilities['dev.ucp.shopping.ap2_mandate']).toEqual([
+      {
+        version: '2026-04-08',
+        spec: 'https://ucp.dev/latest/specification/ap2-mandates/',
+        schema: 'https://ucp.dev/schemas/shopping/ap2-mandates.json',
+        extends: ['dev.ucp.shopping.checkout'],
+      },
+    ]);
   });
 });
 

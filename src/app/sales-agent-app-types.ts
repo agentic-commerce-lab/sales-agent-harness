@@ -1,6 +1,10 @@
 import type { A2aApi } from '../api/a2a-api.js';
 import type { CustomerApi } from '../api/customer-api.js';
-import type { CheckoutHandoffResult, CommerceAdapter } from '../contracts/commerce.js';
+import type {
+  Ap2PaymentMandate,
+  CheckoutHandoffResult,
+  CommerceAdapter,
+} from '../contracts/commerce.js';
 import type { AgentChannel, AgentHarnessConfig } from '../contracts/config.js';
 import type { CustomerContext, PublicAgentSession } from '../contracts/session.js';
 import type { HandoffStore } from '../handoff/handoff-store.js';
@@ -44,6 +48,7 @@ export interface SalesAgentHarnessApp {
   createSession(input: CreateAgentSessionInput): PublicAgentSession;
   chat(input: ChatInput): Promise<AgentRuntimeResponse>;
   validateCheckoutHandoff(input: { readonly handoffId: string }): CheckoutHandoffValidationResult;
+  recordAp2Mandate(agentSessionId: string, mandate: Ap2PaymentMandate): void;
 }
 
 export interface CreateSalesAgentHarnessAppInput {
