@@ -118,11 +118,26 @@ function enforceCartLimitsOnResult<T>(
 }
 
 function requireSession(options: HarnessExecutorOptions, agentSessionId: string): AgentSession {
-  const session = options.sessionStore.getSession(agentSessionId, options.config.merchantId);
-
-  if (!session) {
-    throw new Error(`Agent session ${agentSessionId} was not found`);
+  const existing = options.sessionStore.getSession(agentSessionId, options.config.merchantId);
+  if (existing) {
+    return existing;
   }
 
-  return session;
+  // Get-or-create: mint a session under the client-supplied id (kept stateful across
+  // the buyer's calls, so commerce context accumulates) instead of failing. Lets a
+  // buyer agent pick a stable agentSessionId and shop without a prior /sessions call.
+  const createdAt = options.now();
+  return options.sessionStore.createSession({
+    agentSessionId,
+    merchantId: options.config.merchantId,
+    agentId: options.config.agentId,
+    channel: 'a2a',
+    customerContext: {},
+    commerceContext: {
+      shopwareSalesChannelId: options.config.shopware.salesChannelId,
+      shopwareContextToken: globalThis.crypto.randomUUID(),
+    },
+    createdAt,
+    expiresAt: new Date(createdAt.getTime() + 1_800_000),
+  });
 }
