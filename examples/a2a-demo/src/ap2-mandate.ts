@@ -119,7 +119,3 @@ export function createAp2Mandate(input: Ap2MandateInput): Ap2Mandate {
     }),
   };
 }
-
-export function describeMandateToken(token: string): string {
-  return token.length > 24 ? `${token.slice(0, 12)}…${token.slice(-8)}` : token;
-}
