@@ -311,6 +311,7 @@ function createExpectedAgentCard() {
     description:
       'Merchant-controlled seller agent for safe product search, cart preparation, checkout handoff, and policy-gated checkout completion.',
     url: 'https://harness.example.test',
+    documentationUrl: 'https://harness.example.test/openapi.json',
     version: '0.1.0',
     protocolVersion: a2aProtocolVersion,
     capabilities: {
@@ -436,4 +437,11 @@ test('GET / returns a 200 discovery pointer instead of 404', async () => {
       commerceCustomer: '/commerce/customer',
     },
   });
+});
+
+test('GET /openapi.json serves the commerce OpenAPI document', async () => {
+  const handler = createSalesAgentHttpHandler({ app: createCommerceRoutingApp() });
+  const res = await handler.handle(new Request('https://harness.example.test/openapi.json'));
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ openapi: '3.1.0', paths: { '/commerce/a2a': {} } });
 });
