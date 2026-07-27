@@ -106,10 +106,11 @@ function handleGetRequest(input: CreateSalesAgentHttpHandlerInput, url: URL): Re
   if (url.pathname === '/') {
     return jsonResponse({
       service: 'sales-agent-harness',
-      description: 'A2A commerce agent. Discover via the agent card; shop via /commerce/a2a.',
+      description: 'Seller commerce agent. Discover capabilities via the agent card.',
       endpoints: {
         agentCard: '/.well-known/agent-card.json',
-        commerce: '/commerce/a2a',
+        commerceA2a: '/commerce/a2a',
+        commerceCustomer: '/commerce/customer',
         sessions: '/sessions',
         health: '/health',
       },

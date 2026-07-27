@@ -430,6 +430,10 @@ test('GET / returns a 200 discovery pointer instead of 404', async () => {
   const rootResponse = await handler.handle(new Request('https://harness.example.test/'));
   expect(rootResponse.status).toBe(200);
   expect(await rootResponse.json()).toMatchObject({
-    endpoints: { agentCard: '/.well-known/agent-card.json', commerce: '/commerce/a2a' },
+    endpoints: {
+      agentCard: '/.well-known/agent-card.json',
+      commerceA2a: '/commerce/a2a',
+      commerceCustomer: '/commerce/customer',
+    },
   });
 });
