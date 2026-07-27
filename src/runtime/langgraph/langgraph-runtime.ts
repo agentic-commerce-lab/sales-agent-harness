@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import type { BaseMessageLike } from '@langchain/core/messages';
+import { trace } from '@opentelemetry/api';
 
 import { createAgent } from './langgraph-agent.js';
 import { normalizeDeepAgentResponse } from './langgraph-response.js';
@@ -17,6 +18,8 @@ import type {
 
 export { normalizeDeepAgentResponse } from './langgraph-response.js';
 export { createSqliteLangGraphCheckpointSaver } from './sqlite-checkpoint-saver.js';
+
+const tracer = trace.getTracer('sales-agent-harness');
 
 export class LangGraphDeepAgentRuntime {
   readonly #agent: DeepAgentGraph;
@@ -41,19 +44,29 @@ export class LangGraphDeepAgentRuntime {
   }
 
   async respond(input: LangGraphRuntimeInput): Promise<LangGraphRuntimeResponse> {
-    const result = await this.#toolContext.run({ agentSessionId: input.agentSessionId }, () =>
-      this.#agent.invoke(
-        {
-          messages: toLangChainMessages(
-            input.messages ?? [{ role: 'user', content: input.message }],
-          ),
-          agentSessionId: input.agentSessionId,
-        },
-        { configurable: { thread_id: input.agentSessionId } },
-      ),
-    );
+    return tracer.startActiveSpan(
+      'agent.respond',
+      { attributes: { 'langfuse.session.id': input.agentSessionId } },
+      async (span) => {
+        try {
+          const result = await this.#toolContext.run({ agentSessionId: input.agentSessionId }, () =>
+            this.#agent.invoke(
+              {
+                messages: toLangChainMessages(
+                  input.messages ?? [{ role: 'user', content: input.message }],
+                ),
+                agentSessionId: input.agentSessionId,
+              },
+              { configurable: { thread_id: input.agentSessionId } },
+            ),
+          );
 
-    return normalizeDeepAgentResponse(result);
+          return normalizeDeepAgentResponse(result);
+        } finally {
+          span.end();
+        }
+      },
+    );
   }
 
   // fallow-ignore-next-line unused-class-member

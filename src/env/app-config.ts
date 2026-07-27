@@ -8,6 +8,11 @@ import {
   type CommerceEnvironmentInput,
   loadCommerceEnvironmentConfig,
 } from './commerce-config.js';
+import {
+  loadObservabilityEnvironmentConfig,
+  type ObservabilityEnvironmentConfig,
+  type ObservabilityEnvironmentInput,
+} from './observability-config.js';
 
 export type AgentRuntimeProvider = 'deep_agents';
 export type CommerceAdapterProvider = 'shopware' | 'ucp';
@@ -31,11 +36,13 @@ export interface ApplicationEnvironmentConfig {
   readonly storage: StorageEnvironmentConfig;
   readonly runtime: AgentRuntimeEnvironmentConfig;
   readonly commerce: CommerceEnvironmentConfig;
+  readonly observability: ObservabilityEnvironmentConfig;
 }
 
 export interface ApplicationEnvironmentInput
   extends AgentRuntimeEnvironmentInput,
-    CommerceEnvironmentInput {
+    CommerceEnvironmentInput,
+    ObservabilityEnvironmentInput {
   readonly AGENT_CONFIG_PATH?: string | undefined;
   readonly HOST?: string | undefined;
   readonly PORT?: string | undefined;
@@ -65,6 +72,9 @@ export function loadApplicationEnvironmentConfig(
     SHOPWARE_UCP_SIGNING_KEY_ID: process.env.SHOPWARE_UCP_SIGNING_KEY_ID,
     SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK: process.env.SHOPWARE_UCP_SIGNING_PRIVATE_KEY_JWK,
     SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL: process.env.SHOPWARE_UCP_ALLOW_INSECURE_PROFILE_URL,
+    LANGFUSE_PUBLIC_KEY: process.env.LANGFUSE_PUBLIC_KEY,
+    LANGFUSE_SECRET_KEY: process.env.LANGFUSE_SECRET_KEY,
+    LANGFUSE_BASE_URL: process.env.LANGFUSE_BASE_URL,
   },
 ): ApplicationEnvironmentConfig {
   return {
@@ -79,6 +89,7 @@ export function loadApplicationEnvironmentConfig(
     storage: parseStorageConfig(env),
     runtime: loadAgentRuntimeEnvironmentConfig(env),
     commerce: loadCommerceEnvironmentConfig(env),
+    observability: loadObservabilityEnvironmentConfig(env),
   };
 }
 

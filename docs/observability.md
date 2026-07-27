@@ -52,3 +52,26 @@ records, audit events, run records, and checkout idempotency records to survive 
 The app-level SQLite runtime smoke test covers this path with a fake Deep Agent: one app instance
 writes a LangGraph checkpoint through the runtime, a second app instance reopens the same SQLite
 database, and the runtime reads the checkpoint back through the configured `thread_id`.
+
+## Langfuse Tracing
+
+Set `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL` to send LLM and
+tool-call traces from the LangGraph Deep Agents runtime to a self-hosted Langfuse instance. All
+three variables are required together; leaving all three unset disables tracing entirely, with no
+behavior change to the harness. Setting only one or two of them is a configuration error at
+startup.
+
+Tracing is wired through OpenTelemetry: `@arizeai/openinference-instrumentation-langchain` patches
+LangChain's callback manager so every model call, tool call, and internal LangGraph/Deep Agents
+step emits an OTel span automatically, with prompt/completion content, token usage, latency, and
+model name as span attributes. Spans are exported over OTLP/HTTP to
+`{LANGFUSE_BASE_URL}/api/public/otel/v1/traces`.
+
+Each chat turn (`LangGraphDeepAgentRuntime.respond()`) is wrapped in a root span tagged with the
+harness's `agentSessionId` as the `langfuse.session.id` attribute. Langfuse groups every trace
+sharing that attribute into one session view, so a full multi-turn conversation shows up as a
+single session, with every LLM/tool call inside each turn visible as a nested span.
+
+Traces sent to Langfuse contain full prompt, completion, and tool-argument content by default —
+the same class of buyer-PII concern already called out for `DEBUG_LOG_REQUEST_BODIES` above. Only
+enable this against a Langfuse instance you're authorized to send that content to.
