@@ -62,21 +62,18 @@ export class HarnessCore {
     });
   }
 
-  // fallow-ignore-next-line unused-class-member
   async searchProducts(input: HarnessRequest & SearchProductsInput) {
     return this.#executor.execute('searchProducts', input, (session) =>
       this.#adapter.searchProducts(withCommerceContext(input, session)),
     );
   }
 
-  // fallow-ignore-next-line unused-class-member
   async getProductDetails(input: HarnessRequest & ProductDetailsInput) {
     return this.#executor.execute('getProductDetails', input, (session) =>
       this.#adapter.getProductDetails(withCommerceContext(input, session)),
     );
   }
 
-  // fallow-ignore-next-line unused-class-member
   async createCart(input: HarnessRequest & CreateCartInput) {
     return this.#executor.execute(
       'createCart',
@@ -109,7 +106,6 @@ export class HarnessCore {
     );
   }
 
-  // fallow-ignore-next-line unused-class-member
   async prepareCheckoutHandoff(input: HarnessRequest & { readonly cartId: string }) {
     return this.#executor.execute(
       'prepareCheckoutHandoff',
@@ -165,7 +161,6 @@ export class HarnessCore {
     );
   }
 
-  // fallow-ignore-next-line unused-class-member
   async completeCheckout(input: HarnessRequest & CompleteCheckoutInput) {
     return this.#executor.execute('completeCheckout', input, async (session) => {
       const ap2Mandate = this.#takePendingAp2Mandate(session.agentSessionId);

@@ -100,14 +100,35 @@ function handleGetRequest(input: CreateSalesAgentHttpHandlerInput, url: URL): Re
   }
 
   if (url.pathname === '/checkout-resume' && input.checkoutResume) {
-    const token = url.searchParams.get('token');
-    if (!token) {
-      return jsonResponse({ error: 'Missing token parameter' }, 400);
-    }
-    return htmlResponse(checkoutResumeHtml(token, input.checkoutResume));
+    return checkoutResumeResponse(url, input.checkoutResume);
+  }
+
+  if (url.pathname === '/') {
+    return jsonResponse({
+      service: 'sales-agent-harness',
+      description: 'Seller commerce agent. Discover capabilities via the agent card.',
+      endpoints: {
+        agentCard: '/.well-known/agent-card.json',
+        commerceA2a: '/commerce/a2a',
+        commerceCustomer: '/commerce/customer',
+        sessions: '/sessions',
+        health: '/health',
+      },
+    });
   }
 
   return jsonResponse({ error: 'Not found' }, 404);
+}
+
+function checkoutResumeResponse(
+  url: URL,
+  checkoutResume: NonNullable<CreateSalesAgentHttpHandlerInput['checkoutResume']>,
+): Response {
+  const token = url.searchParams.get('token');
+  if (!token) {
+    return jsonResponse({ error: 'Missing token parameter' }, 400);
+  }
+  return htmlResponse(checkoutResumeHtml(token, checkoutResume));
 }
 
 async function handlePostRequest(

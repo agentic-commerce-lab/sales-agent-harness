@@ -375,3 +375,26 @@ function createFulfillment() {
     },
   };
 }
+
+test('commerce request with an unknown agentSessionId auto-creates the session (get-or-create)', async () => {
+  const sessionStore = new InMemorySessionStore({
+    now: () => new Date('2026-06-30T12:00:00.000Z'),
+  });
+  const harness = new HarnessCore({
+    config: createConfig(),
+    adapter: createAdapter(),
+    auditLogger: new InMemoryAuditLogger(),
+    handoffStore: new InMemoryHandoffStore({ now: () => new Date('2026-06-30T12:00:00.000Z') }),
+    sessionStore,
+    now: () => new Date('2026-06-30T12:00:00.000Z'),
+  });
+
+  expect(sessionStore.getSession('fresh-id', 'merchant-1')).toBeUndefined();
+
+  const result = await harness.searchProducts({ agentSessionId: 'fresh-id', query: 'jacket' });
+  expect(result.status).toBe('ok');
+
+  const created = sessionStore.getSession('fresh-id', 'merchant-1');
+  expect(created).toBeDefined();
+  expect(created?.commerceContext?.shopwareSalesChannelId).toBe('sales-channel-1');
+});
