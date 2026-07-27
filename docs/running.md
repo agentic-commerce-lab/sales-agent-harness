@@ -13,8 +13,7 @@ cp .env.example .env
 
 Required values:
 
-- `OPENAI_API_KEY`: OpenAI API key used by the Deep Agents runtime (required unless
-  `AGENT_MODEL_PROVIDER=openrouter`, in which case set `OPENROUTER_API_KEY` instead).
+- `OPENAI_API_KEY`: OpenAI API key used by the Deep Agents runtime.
 - `SHOPWARE_BASE_URL`: Shopware storefront base URL, without a trailing slash.
 - `SHOPWARE_STORE_API_ACCESS_KEY`: Store API access key for the target sales channel.
 - `SHOPWARE_DEFAULT_SALES_CHANNEL_ID`: sales channel ID used for sessions and handoff records.
@@ -22,11 +21,9 @@ Required values:
 Common optional values:
 
 - `AGENT_CONFIG_PATH`, defaulting to `config/agents/demo-sales-agent.json`
-- `AGENT_MODEL_PROVIDER`, `openai` by default, or `openrouter`
-- `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini` for `openai` or `openai/gpt-5-mini` for
-  `openrouter`
-- `OPENROUTER_API_KEY`, required when `AGENT_MODEL_PROVIDER=openrouter`
-- `OPENROUTER_BASE_URL`, defaulting to `https://openrouter.ai/api/v1`
+- `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
+- `OPENAI_BASE_URL`, optional: points the runtime at any OpenAI-compatible endpoint instead of
+  `api.openai.com`, reusing `OPENAI_API_KEY` as-is
 - `AGENT_RUNTIME_PROVIDER`, currently `deep_agents`
 - `COMMERCE_ADAPTER_PROVIDER`, `shopware` by default, or `ucp_shopware`
 - `STORAGE_PROVIDER`, `memory` by default, or `sqlite`
@@ -38,13 +35,13 @@ Common optional values:
 To use OpenRouter instead of OpenAI directly:
 
 ```bash
-AGENT_MODEL_PROVIDER=openrouter
-OPENROUTER_API_KEY=sk-or-...
+OPENAI_API_KEY=sk-or-...
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
 AGENT_RUNTIME_MODEL=openai/gpt-5-mini
 ```
 
 Any OpenRouter-hosted model works, for example `anthropic/claude-3.5-sonnet` or
-`google/gemini-2.5-pro`. `OPENAI_API_KEY` is not read when `AGENT_MODEL_PROVIDER=openrouter`.
+`google/gemini-2.5-pro`.
 
 The service reads environment variables through typed config accessors. Do not read `process.env`
 from application code outside those accessors.
@@ -245,11 +242,11 @@ bun run quality
 
 ## Troubleshooting
 
-- Missing `OPENAI_API_KEY`: set `OPENAI_API_KEY` and restart the service, or switch to
-  `AGENT_MODEL_PROVIDER=openrouter` with `OPENROUTER_API_KEY` set.
+- Missing `OPENAI_API_KEY`: set `OPENAI_API_KEY` and restart the service.
 - Missing `SHOPWARE_*`: set all required Shopware variables and restart the service.
-- OpenAI/OpenRouter authentication errors: verify the API key for the configured
-  `AGENT_MODEL_PROVIDER` and check `AGENT_RUNTIME_MODEL` is a model that provider serves.
+- OpenAI authentication errors: verify `OPENAI_API_KEY` and `AGENT_RUNTIME_MODEL` — if using
+  `OPENAI_BASE_URL` to reach an alternate provider, confirm that provider serves the configured
+  model.
 - No tool calls: ask for a concrete commerce action, such as product search or cart preparation.
 - Shopware `401` or `403`: verify the Store API access key and sales-channel mapping.
 - Empty results: confirm products are visible in the configured Shopware sales channel.
