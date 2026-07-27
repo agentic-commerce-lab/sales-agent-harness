@@ -67,6 +67,38 @@ research-preview path only. Do not use it for production selling without a separ
 design for buyer authorization, payment handling, order limits, idempotency, audit review, risk
 controls, and operational ownership.
 
+## AP2 Payment Mandates And x402 Settlement
+
+`completeCheckout` accepts an AP2 checkout mandate, but only when the inbound A2A message carries
+one in `message.metadata.ap2Mandate.checkoutMandate` (see `ap2MandateMetadataSchema` in
+`src/app/a2a-schemas.ts`). The `completeCheckout` tool schema has no field for it: the harness never
+asks the model to supply a mandate, since only the buyer's platform can attest buyer consent. A
+request without a mandate completes checkout exactly as before this capability existed.
+
+With `ucp_shopware`, a supplied mandate rides through as the UCP checkout's `ap2` extension. The
+harness surfaces two things back from a successful completion when the shop returns them:
+
+- `ap2MerchantAuthorization`: a JWS Detached Content signature proving the shop verified the
+  mandate.
+- `x402`: buyer-executed payment instructions (pay URL, deep-link code, network/asset details) when
+  the shop's payment method requires an on-chain settlement step. The harness only passes these
+  through — payment execution stays a buyer-side action.
+
+If a mandate is supplied but the shop's UCP profile doesn't advertise
+`dev.ucp.shopping.ap2_mandate` support, `completeCheckout` rejects the request rather than
+completing checkout against a mandate the shop cannot verify. The `shopware` adapter ignores
+`ap2Mandate` entirely — mandates only take effect with `ucp_shopware`.
+
+Before a mandate-bearing completion, the buyer also needs the checkout's real terms (id and total)
+to pin the mandate to the actual transaction instead of guessing at it. The harness exposes these
+as `pendingCheckoutTerms` on the chat/A2A response once `prepareCheckoutHandoff` has run, cleared
+again once completion happens.
+
+See `examples/a2a-demo` for an end-to-end demonstration — a buyer agent that signs and attaches a
+mandate on every message, and a wallet that settles x402 instructions when a completed checkout
+returns them. Set `AP2_MANDATES_ENABLED=false` in that demo's `.env` to run the negotiation without
+AP2 at all.
+
 ## Non-Prod Full-Checkout Happy Path
 
 Use this flow for a local or demo environment where real order creation is acceptable:
