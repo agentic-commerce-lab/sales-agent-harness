@@ -1,6 +1,6 @@
 import type { ServerResponse } from 'node:http';
 
-import { createAp2Mandate } from './ap2-mandate.js';
+import { createAp2Mandate, isAp2MandatesEnabled } from './ap2-mandate.js';
 import { type ConversationEntry, decideBuyerMessage } from './buyer-agent.js';
 import { DONE_SIGNAL } from './buyer-prompt.js';
 import { type CheckoutTerms, callSellerA2A } from './seller-client.js';
@@ -67,27 +67,34 @@ async function advanceConversation(
   // Attached to every outbound message so it is already on the seller's
   // session whenever its LLM decides to call completeCheckout — the harness
   // never asks the model to supply one, see HarnessCore#recordAp2Mandate.
-  const ap2Mandate = createAp2Mandate({
-    contextId: state.contextId,
-    goal,
-    ...(state.checkoutTerms
-      ? {
-          checkoutTerms: {
-            checkoutId: state.checkoutTerms.checkoutId,
-            totalAmount: state.checkoutTerms.totalAmount,
-            currency: state.checkoutTerms.currency,
-          },
-        }
-      : {}),
-  });
+  // Skipped entirely when AP2_MANDATES_ENABLED=false.
+  const ap2Mandate = isAp2MandatesEnabled()
+    ? createAp2Mandate({
+        contextId: state.contextId,
+        goal,
+        ...(state.checkoutTerms
+          ? {
+              checkoutTerms: {
+                checkoutId: state.checkoutTerms.checkoutId,
+                totalAmount: state.checkoutTerms.totalAmount,
+                currency: state.checkoutTerms.currency,
+              },
+            }
+          : {}),
+      })
+    : undefined;
 
   emit('buyer', {
     message: buyerMessage,
-    ap2Mandate: {
-      checkoutMandate: ap2Mandate.checkoutMandate,
-      pinned: state.checkoutTerms !== undefined,
-      checkoutTerms: state.checkoutTerms,
-    },
+    ...(ap2Mandate
+      ? {
+          ap2Mandate: {
+            checkoutMandate: ap2Mandate.checkoutMandate,
+            pinned: state.checkoutTerms !== undefined,
+            checkoutTerms: state.checkoutTerms,
+          },
+        }
+      : {}),
   });
   emit('status', { phase: 'seller-thinking' });
 

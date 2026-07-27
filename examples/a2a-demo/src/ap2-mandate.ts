@@ -95,6 +95,16 @@ function signJwt(claims: Record<string, unknown>): string {
   return `${signingInput}.${base64url(signature)}`;
 }
 
+/**
+ * Whether the buyer agent attaches AP2 mandates to outbound messages at all.
+ * Defaults on (the demo's showcased behavior); set AP2_MANDATES_ENABLED=false
+ * to run the buyer/seller negotiation and x402 settlement without AP2, e.g.
+ * against a seller harness/shop that doesn't verify mandates.
+ */
+export function isAp2MandatesEnabled(): boolean {
+  return process.env.AP2_MANDATES_ENABLED !== 'false';
+}
+
 export function createAp2Mandate(input: Ap2MandateInput): Ap2Mandate {
   const issuedAt = Math.floor(Date.now() / 1000);
   const terms = input.checkoutTerms;

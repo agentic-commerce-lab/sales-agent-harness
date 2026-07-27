@@ -127,6 +127,25 @@ For any productionized version, keep strict signature enforcement, use an HTTPS 
 redirects, and keep the private JWK only in server-side environment or secret storage. This
 repository does not provide the surrounding production controls by itself.
 
+## AP2 Payment Mandates
+
+AP2 checkout mandate support is entirely opt-in per request and needs no environment
+configuration or feature flag. `completeCheckout` accepts an AP2 mandate only when the inbound
+A2A message carries one in `message.metadata.ap2Mandate.checkoutMandate` (see
+`ap2MandateMetadataSchema` in `src/app/a2a-schemas.ts`); the harness never asks the model to
+supply one, since only the buyer's platform can attest buyer consent. Requests without a mandate
+complete checkout exactly as before this feature existed.
+
+With the `ucp_shopware` adapter, a supplied mandate rides through as the UCP checkout's `ap2`
+extension and the harness surfaces the shop's `merchant_authorization` response and any x402
+payment instructions back to the caller. If a mandate is supplied but the shop's UCP profile
+doesn't advertise `dev.ucp.shopping.ap2_mandate` support, `completeCheckout` rejects the request
+rather than completing checkout against an unverifiable mandate. The `shopware` adapter ignores
+`ap2Mandate` entirely.
+
+See `examples/a2a-demo` for an end-to-end demonstration, including an `AP2_MANDATES_ENABLED` flag
+to run that demo's buyer/seller negotiation without AP2 at all.
+
 ## Runtime And Storage
 
 Shopware environment access is centralized in `src/env/shopware-config.ts`:

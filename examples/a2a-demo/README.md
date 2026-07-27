@@ -70,11 +70,15 @@ PAYER_PK=0x...
 
 Leave `PAYER_PK` unset to see the checkout complete without payment settling.
 
-On every message to the seller, the buyer agent also attaches a signed AP2 checkout/payment
-mandate (see `src/ap2-mandate.ts`). No configuration is needed — a signing keypair is generated
-in-process automatically. This is a demo simplification (plain ES256 JWTs standing in for the full
-AP2 SD-JWT+kb credential format) meant to exercise the harness's mandate-relay plumbing end to end;
-it does not guarantee the shop's payment processor recognizes or trusts the signature.
+By default, the buyer agent also attaches a signed AP2 checkout/payment mandate to every message
+to the seller (see `src/ap2-mandate.ts`). No configuration is needed — a signing keypair is
+generated in-process automatically. This is a demo simplification (plain ES256 JWTs standing in for
+the full AP2 SD-JWT+kb credential format) meant to exercise the harness's mandate-relay plumbing end
+to end; it does not guarantee the shop's payment processor recognizes or trusts the signature.
+
+Set `AP2_MANDATES_ENABLED=false` to run the negotiation without AP2 mandates at all — useful when
+pointing the demo at a seller/shop that doesn't verify them, or to see the plain buyer/seller flow
+without the extra plumbing.
 
 ## Run
 
