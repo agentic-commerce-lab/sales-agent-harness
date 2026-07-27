@@ -4,7 +4,7 @@ export interface AgentRuntimeEnvironmentConfig {
   readonly provider: AgentModelProvider;
   readonly apiKey: string;
   readonly modelName: string;
-  readonly baseUrl?: string | undefined;
+  readonly baseURL?: string | undefined;
 }
 
 export interface AgentRuntimeEnvironmentInput {
@@ -13,6 +13,7 @@ export interface AgentRuntimeEnvironmentInput {
   readonly OPENROUTER_API_KEY?: string | undefined;
   readonly OPENROUTER_BASE_URL?: string | undefined;
   readonly AGENT_RUNTIME_MODEL?: string | undefined;
+  readonly OPENAI_BASE_URL?: string | undefined;
 }
 
 const OPENROUTER_DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
@@ -26,6 +27,7 @@ export function loadAgentRuntimeEnvironmentConfig(
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     OPENROUTER_BASE_URL: process.env.OPENROUTER_BASE_URL,
     AGENT_RUNTIME_MODEL: process.env.AGENT_RUNTIME_MODEL,
+    OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
   },
 ): AgentRuntimeEnvironmentConfig {
   const provider = parseAgentModelProvider(env.AGENT_MODEL_PROVIDER ?? 'openai');
@@ -35,7 +37,7 @@ export function loadAgentRuntimeEnvironmentConfig(
       provider,
       apiKey: readRequiredEnv(env.OPENROUTER_API_KEY, 'OPENROUTER_API_KEY'),
       modelName: env.AGENT_RUNTIME_MODEL ?? OPENROUTER_DEFAULT_MODEL,
-      baseUrl: env.OPENROUTER_BASE_URL ?? OPENROUTER_DEFAULT_BASE_URL,
+      baseURL: env.OPENROUTER_BASE_URL ?? OPENROUTER_DEFAULT_BASE_URL,
     };
   }
 
@@ -43,6 +45,7 @@ export function loadAgentRuntimeEnvironmentConfig(
     provider,
     apiKey: readRequiredEnv(env.OPENAI_API_KEY, 'OPENAI_API_KEY'),
     modelName: env.AGENT_RUNTIME_MODEL ?? OPENAI_DEFAULT_MODEL,
+    baseURL: env.OPENAI_BASE_URL,
   };
 }
 

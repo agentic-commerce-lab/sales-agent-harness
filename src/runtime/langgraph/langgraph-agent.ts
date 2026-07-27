@@ -32,7 +32,7 @@ function createModel(input: CreateLangGraphDeepAgentRuntimeInput): DeepAgentMode
   const modelInput = {
     apiKey: input.apiKey,
     model: input.modelName,
-    baseUrl: input.baseUrl,
+    ...(input.baseURL ? { baseURL: input.baseURL } : {}),
   };
 
   if (input.createModel) {
@@ -42,7 +42,7 @@ function createModel(input: CreateLangGraphDeepAgentRuntimeInput): DeepAgentMode
   return new ChatOpenAI({
     apiKey: modelInput.apiKey,
     model: modelInput.model,
-    ...(modelInput.baseUrl ? { configuration: { baseURL: modelInput.baseUrl } } : {}),
+    ...(input.baseURL ? { configuration: { baseURL: input.baseURL } } : {}),
   });
 }
 

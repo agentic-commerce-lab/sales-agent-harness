@@ -8,6 +8,7 @@ import {
   type ApplicationEnvironmentConfig,
   loadApplicationEnvironmentConfig,
 } from '../env/app-config.js';
+import { initLangfuseTracing } from '../observability/langfuse-tracing.js';
 import {
   createLangGraphDeepAgentRuntime,
   createSqliteLangGraphCheckpointSaver,
@@ -33,6 +34,7 @@ export interface CreateRunnableSalesAgentHarnessAppInput {
 export function createRunnableSalesAgentHarnessApp(
   input: CreateRunnableSalesAgentHarnessAppInput,
 ): SalesAgentHarnessApp {
+  initLangfuseTracing(input.environment.observability.langfuse);
   const agentConfig = withRuntimeCommerceConfig(input.agentConfig, input.environment);
   const runStore =
     input.environment.storage.provider === 'sqlite'
@@ -64,7 +66,9 @@ export function createRunnableSalesAgentHarnessApp(
       createLangGraphDeepAgentRuntime({
         apiKey: input.environment.runtime.apiKey,
         modelName: input.environment.runtime.modelName,
-        baseUrl: input.environment.runtime.baseUrl,
+        ...(input.environment.runtime.baseURL
+          ? { baseURL: input.environment.runtime.baseURL }
+          : {}),
         tools,
         systemPrompt: agentConfig.systemPrompt,
         ...(checkpointSaver ? { checkpointSaver } : {}),

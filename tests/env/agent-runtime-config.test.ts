@@ -35,7 +35,7 @@ describe('loadAgentRuntimeEnvironmentConfig', () => {
       provider: 'openrouter',
       apiKey: 'or-test-key',
       modelName: 'openai/gpt-5-mini',
-      baseUrl: 'https://openrouter.ai/api/v1',
+      baseURL: 'https://openrouter.ai/api/v1',
     });
   });
 
@@ -48,7 +48,7 @@ describe('loadAgentRuntimeEnvironmentConfig', () => {
     });
 
     expect(config.modelName).toBe('anthropic/claude-3.5-sonnet');
-    expect(config.baseUrl).toBe('https://proxy.example/api/v1');
+    expect(config.baseURL).toBe('https://proxy.example/api/v1');
   });
 
   test('rejects missing OpenRouter API key and unsupported providers', () => {

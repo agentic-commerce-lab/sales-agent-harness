@@ -1,4 +1,10 @@
 import { describe, expect, test } from 'bun:test';
+import { trace } from '@opentelemetry/api';
+import {
+  BasicTracerProvider,
+  InMemorySpanExporter,
+  SimpleSpanProcessor,
+} from '@opentelemetry/sdk-trace-node';
 import { z } from 'zod';
 
 import {
@@ -194,6 +200,28 @@ describe('createLangGraphDeepAgentRuntime run lifecycle', () => {
 
     expect(cancelled?.status).toBe('cancelled');
     expect(created.runtime.getRun(run.runId)?.status).toBe('cancelled');
+  });
+});
+
+describe('createLangGraphDeepAgentRuntime tracing', () => {
+  test('tags the request root span with the harness session id', async () => {
+    const exporter = new InMemorySpanExporter();
+    const provider = new BasicTracerProvider({
+      spanProcessors: [new SimpleSpanProcessor(exporter)],
+    });
+    trace.setGlobalTracerProvider(provider);
+
+    try {
+      const created = createRuntimeWithFakeDeepAgent();
+
+      await created.runtime.respond({ agentSessionId: 'session-42', message: 'Find jackets' });
+
+      const [span] = exporter.getFinishedSpans();
+      expect(span?.name).toBe('agent.respond');
+      expect(span?.attributes['langfuse.session.id']).toBe('session-42');
+    } finally {
+      trace.disable();
+    }
   });
 });
 

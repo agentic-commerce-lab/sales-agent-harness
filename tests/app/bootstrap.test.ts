@@ -54,6 +54,7 @@ test('createRunnableSalesAgentHarnessApp uses the Shopware environment URL for c
         storeApiAccessKey: 'store-api-key',
         defaultSalesChannelId: 'sales-channel-1',
       },
+      observability: { langfuse: undefined },
     },
     fetchImplementation: cartFetch,
   });
@@ -100,6 +101,7 @@ test('createRunnableSalesAgentHarnessApp can use Agentic Commerce UCP checkout h
         storeApiAccessKey: 'store-api-key',
         defaultSalesChannelId: 'sales-channel-1',
       },
+      observability: { langfuse: undefined },
     },
     fetchImplementation: ucpFetch,
   });
@@ -149,6 +151,7 @@ test('createRunnableSalesAgentHarnessApp can use SQLite app storage', () => {
         storeApiAccessKey: 'store-api-key',
         defaultSalesChannelId: 'sales-channel-1',
       },
+      observability: { langfuse: undefined },
     },
     fetchImplementation: cartFetch,
   });
@@ -180,6 +183,7 @@ test('createRunnableSalesAgentHarnessApp can use SQLite app storage', () => {
         storeApiAccessKey: 'store-api-key',
         defaultSalesChannelId: 'sales-channel-1',
       },
+      observability: { langfuse: undefined },
     },
     fetchImplementation: cartFetch,
   });
@@ -217,6 +221,7 @@ test('createRunnableSalesAgentHarnessApp wires LangGraph checkpointing to SQLite
         storeApiAccessKey: 'store-api-key',
         defaultSalesChannelId: 'sales-channel-1',
       },
+      observability: { langfuse: undefined },
     },
     fetchImplementation: cartFetch,
     createDeepAgent: (params) => {
@@ -384,6 +389,7 @@ function createSqliteEnvironment(sqlitePath: string) {
       storeApiAccessKey: 'store-api-key',
       defaultSalesChannelId: 'sales-channel-1',
     },
+    observability: { langfuse: undefined },
   };
 }
 
