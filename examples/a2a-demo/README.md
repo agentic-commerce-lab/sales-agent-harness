@@ -14,7 +14,8 @@ browser.
 - The seller agent is configured with a real commerce adapter and visible products.
 - Node.js with `--env-file` support is available.
 - Dependencies for this example are installed with `npm install`.
-- `OPENAI_API_KEY` is available for the buyer agent model.
+- `OPENAI_API_KEY` is available for the buyer agent model, or `OPENROUTER_API_KEY` when using
+  OpenRouter (`BUYER_MODEL_PROVIDER=openrouter`).
 
 ## Configure
 
@@ -34,6 +35,14 @@ SELLER_URL=http://localhost:3000
 PORT=3001
 ```
 
+To run the buyer agent's model through OpenRouter instead:
+
+```bash
+BUYER_MODEL_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-...
+BUYER_MODEL=openai/gpt-5-mini
+```
+
 Optional buyer identity fields are used when the buyer agent asks the seller agent to complete the
 checkout flow:
 
@@ -49,6 +58,27 @@ BUYER_COUNTRY=DE
 
 Use test buyer data only. The completion path can create a real order when the seller agent is
 connected to a completion-capable adapter and merchant policy enables checkout completion.
+
+### Payments (x402) and AP2 mandates
+
+When the shop returns x402 payment instructions on a completed checkout, the buyer agent settles
+them with a real wallet signature. Set a funded test wallet's private key to see this happen:
+
+```bash
+PAYER_PK=0x...
+```
+
+Leave `PAYER_PK` unset to see the checkout complete without payment settling.
+
+By default, the buyer agent also attaches a signed AP2 checkout/payment mandate to every message
+to the seller (see `src/ap2-mandate.ts`). No configuration is needed — a signing keypair is
+generated in-process automatically. This is a demo simplification (plain ES256 JWTs standing in for
+the full AP2 SD-JWT+kb credential format) meant to exercise the harness's mandate-relay plumbing end
+to end; it does not guarantee the shop's payment processor recognizes or trusts the signature.
+
+Set `AP2_MANDATES_ENABLED=false` to run the negotiation without AP2 mandates at all — useful when
+pointing the demo at a seller/shop that doesn't verify them, or to see the plain buyer/seller flow
+without the extra plumbing.
 
 ## Run
 
@@ -83,6 +113,9 @@ The UI streams:
 - buyer messages generated from the goal
 - seller agent responses returned by the harness
 - harness tool calls reported by the seller agent response metadata
+- the AP2 mandate and the shop's merchant authorization, once the seller completes a checkout
+  against it
+- the x402 payment settlement, once the buyer wallet pays a completed order
 - the final completion state when the buyer agent decides the goal is done
 
 ## HTTP Endpoints
@@ -113,7 +146,8 @@ The example server exposes:
 
 ## Troubleshooting
 
-- `OPENAI_API_KEY is not set`: add the key to `examples/a2a-demo/.env`.
+- `OPENAI_API_KEY is not set`: add the key to `examples/a2a-demo/.env`, or switch to
+  `BUYER_MODEL_PROVIDER=openrouter` with `OPENROUTER_API_KEY` set.
 - `Seller A2A error`: confirm the seller agent is running and `SELLER_URL` points to it.
 - Empty or irrelevant product results: confirm the seller agent commerce adapter has visible
   products and the goal matches catalog data.

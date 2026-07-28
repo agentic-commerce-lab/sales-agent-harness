@@ -1,8 +1,14 @@
-import type { BuyerInput, CartItemInput, FulfillmentInput } from '../../contracts/commerce.js';
+import type {
+  Ap2PaymentMandate,
+  BuyerInput,
+  CartItemInput,
+  FulfillmentInput,
+} from '../../contracts/commerce.js';
 import type { CommerceEnvironmentConfig } from '../../env/commerce-config.js';
 import { parseCart } from './ucp-cart-parsers.js';
 import { createUcpHttpClient, type UcpHttpClient } from './ucp-http.js';
 import {
+  toUcpAp2Extension,
   toUcpBuyerPayload,
   toUcpFulfillmentPayload,
   toUcpLineItemPayload,
@@ -94,9 +100,24 @@ export class FetchUcpClient implements UcpClient {
     });
   }
 
-  completeCheckout(input: { readonly checkoutId: string }): Promise<UcpCart> {
+  async completeCheckout(input: {
+    readonly checkoutId: string;
+    readonly ap2Mandate?: Ap2PaymentMandate | undefined;
+  }): Promise<UcpCart> {
+    if (input.ap2Mandate && !(await this.#http.supportsAp2Mandate())) {
+      throw new Error(
+        'an AP2 mandate was supplied but the shop does not advertise ' +
+          'dev.ucp.shopping.ap2_mandate support in its UCP profile',
+      );
+    }
+
     return this.#cartRequest('POST', `${checkoutPath(input.checkoutId)}/complete`, {
+      // No payment instrument here: a payment-specific credential (e.g.
+      // x402's own signed authorization) rides through that payment method's
+      // instrument via its own flow, not a synthetic AP2-branded one no
+      // authorizer is registered to accept.
       payment: { instruments: [] },
+      ...toUcpAp2Extension(input.ap2Mandate),
     });
   }
 

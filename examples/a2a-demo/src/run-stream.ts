@@ -1,8 +1,10 @@
 import type { ServerResponse } from 'node:http';
 
+import { createAp2Mandate, isAp2MandatesEnabled } from './ap2-mandate.js';
 import { type ConversationEntry, decideBuyerMessage } from './buyer-agent.js';
 import { DONE_SIGNAL } from './buyer-prompt.js';
-import { callSellerA2A } from './seller-client.js';
+import { type CheckoutTerms, callSellerA2A } from './seller-client.js';
+import { describePayment, payWithX402 } from './x402-payment.js';
 
 export type Emit = (event: string, data: unknown) => void;
 
@@ -12,10 +14,22 @@ interface ConversationState {
   turn: number;
   contextId: string | undefined;
   history: ConversationEntry[];
+  /**
+   * Checkout terms the seller most recently reported. Learned one turn late
+   * (the buyer can only see what the seller told it last turn), so the
+   * mandate attached to the turn that triggers completion is only accurate
+   * once the seller has reported terms at least once beforehand.
+   */
+  checkoutTerms: CheckoutTerms | undefined;
 }
 
 export function streamConversation(goal: string, res: ServerResponse, emit: Emit): Promise<void> {
-  return streamNextTurn(goal, res, emit, { turn: 0, contextId: undefined, history: [] });
+  return streamNextTurn(goal, res, emit, {
+    turn: 0,
+    contextId: undefined,
+    history: [],
+    checkoutTerms: undefined,
+  });
 }
 
 async function streamNextTurn(
@@ -50,9 +64,41 @@ async function advanceConversation(
     return undefined;
   }
 
-  emit('buyer', { message: buyerMessage });
+  // Attached to every outbound message so it is already on the seller's
+  // session whenever its LLM decides to call completeCheckout — the harness
+  // never asks the model to supply one, see HarnessCore#recordAp2Mandate.
+  // Skipped entirely when AP2_MANDATES_ENABLED=false.
+  const ap2Mandate = isAp2MandatesEnabled()
+    ? createAp2Mandate({
+        contextId: state.contextId,
+        goal,
+        ...(state.checkoutTerms
+          ? {
+              checkoutTerms: {
+                checkoutId: state.checkoutTerms.checkoutId,
+                totalAmount: state.checkoutTerms.totalAmount,
+                currency: state.checkoutTerms.currency,
+              },
+            }
+          : {}),
+      })
+    : undefined;
+
+  emit('buyer', {
+    message: buyerMessage,
+    ...(ap2Mandate
+      ? {
+          ap2Mandate: {
+            checkoutMandate: ap2Mandate.checkoutMandate,
+            pinned: state.checkoutTerms !== undefined,
+            checkoutTerms: state.checkoutTerms,
+          },
+        }
+      : {}),
+  });
   emit('status', { phase: 'seller-thinking' });
-  const sellerResult = await callSellerA2A(buyerMessage, state.contextId);
+
+  const sellerResult = await callSellerA2A(buyerMessage, state.contextId, ap2Mandate);
 
   emit('seller', {
     message: sellerResult.message,
@@ -60,13 +106,34 @@ async function advanceConversation(
     contextId: sellerResult.contextId,
   });
 
+  const history: ConversationEntry[] = [
+    ...state.history,
+    { role: 'buyer', message: buyerMessage },
+    { role: 'seller', message: sellerResult.message, toolCalls: sellerResult.toolCalls },
+  ];
+
+  // The mandate only becomes meaningful once the seller actually used it to
+  // complete a checkout, so only surface it in the feed at that point.
+  if (sellerResult.ap2MerchantAuthorization) {
+    emit('ap2', {
+      mandate: ap2Mandate,
+      merchantAuthorization: sellerResult.ap2MerchantAuthorization,
+    });
+  }
+
+  // The seller relayed x402 payment instructions for a placed order: the
+  // buyer wallet settles deterministically (no model in the loop for money).
+  if (sellerResult.x402) {
+    emit('status', { phase: 'buyer-paying' });
+    const payment = await payWithX402(sellerResult.x402);
+    emit('payment', payment);
+    history.push({ role: 'buyer', message: describePayment(payment) });
+  }
+
   return {
     turn: state.turn + 1,
     contextId: sellerResult.contextId,
-    history: [
-      ...state.history,
-      { role: 'buyer', message: buyerMessage },
-      { role: 'seller', message: sellerResult.message, toolCalls: sellerResult.toolCalls },
-    ],
+    history,
+    checkoutTerms: sellerResult.checkoutTerms ?? state.checkoutTerms,
   };
 }

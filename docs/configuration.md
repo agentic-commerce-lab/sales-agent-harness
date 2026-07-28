@@ -127,6 +127,25 @@ For any productionized version, keep strict signature enforcement, use an HTTPS 
 redirects, and keep the private JWK only in server-side environment or secret storage. This
 repository does not provide the surrounding production controls by itself.
 
+## AP2 Payment Mandates
+
+AP2 checkout mandate support is entirely opt-in per request and needs no environment
+configuration or feature flag. `completeCheckout` accepts an AP2 mandate only when the inbound
+A2A message carries one in `message.metadata.ap2Mandate.checkoutMandate` (see
+`ap2MandateMetadataSchema` in `src/app/a2a-schemas.ts`); the harness never asks the model to
+supply one, since only the buyer's platform can attest buyer consent. Requests without a mandate
+complete checkout exactly as before this feature existed.
+
+With the `ucp_shopware` adapter, a supplied mandate rides through as the UCP checkout's `ap2`
+extension and the harness surfaces the shop's `merchant_authorization` response and any x402
+payment instructions back to the caller. If a mandate is supplied but the shop's UCP profile
+doesn't advertise `dev.ucp.shopping.ap2_mandate` support, `completeCheckout` rejects the request
+rather than completing checkout against an unverifiable mandate. The `shopware` adapter ignores
+`ap2Mandate` entirely.
+
+See `examples/a2a-demo` for an end-to-end demonstration, including an `AP2_MANDATES_ENABLED` flag
+to run that demo's buyer/seller negotiation without AP2 at all.
+
 ## Runtime And Storage
 
 Shopware environment access is centralized in `src/env/shopware-config.ts`:
@@ -135,10 +154,15 @@ Shopware environment access is centralized in `src/env/shopware-config.ts`:
 - `SHOPWARE_STORE_API_ACCESS_KEY`
 - `SHOPWARE_DEFAULT_SALES_CHANNEL_ID`
 
-Deep Agents/OpenAI runtime access is centralized in `src/env/agent-runtime-config.ts`:
+Deep Agents runtime access is centralized in `src/env/agent-runtime-config.ts`:
 
 - `OPENAI_API_KEY`
 - `AGENT_RUNTIME_MODEL`, defaulting to `gpt-5-mini`
+- `OPENAI_BASE_URL`, optional: points the runtime at any OpenAI-compatible endpoint instead of
+  `api.openai.com`, reusing `OPENAI_API_KEY` and `AGENT_RUNTIME_MODEL` as-is. For OpenRouter, set
+  `OPENAI_API_KEY` to your OpenRouter key, `OPENAI_BASE_URL=https://openrouter.ai/api/v1`, and
+  `AGENT_RUNTIME_MODEL` to any OpenRouter-hosted model id, for example
+  `anthropic/claude-3.5-sonnet`.
 
 When using the default runnable app, no manual checkpoint wiring is required. Setting
 `STORAGE_PROVIDER=sqlite` makes `createRunnableSalesAgentHarnessApp()` create a Bun-native SQLite

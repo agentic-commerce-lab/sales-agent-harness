@@ -1,9 +1,18 @@
-import { readRecord } from '../shopware/shopware-store-api-readers.js';
+import { readOptionalRecord, readRecord } from '../shopware/shopware-store-api-readers.js';
 
-export async function discoverUcpShoppingEndpoint(
+/** The ap2-mandates extension capability key businesses advertise for their checkout service. */
+const ap2MandateCapability = 'dev.ucp.shopping.ap2_mandate';
+
+export interface UcpDiscoveredService {
+  readonly endpoint: string;
+  /** Whether the business's own profile declares support for AP2 checkout mandates. */
+  readonly supportsAp2Mandate: boolean;
+}
+
+export async function discoverUcpShoppingService(
   fetchImplementation: typeof fetch,
   baseUrl: string,
-): Promise<string> {
+): Promise<UcpDiscoveredService> {
   const discoveryUrl = new URL('/.well-known/ucp', baseUrl);
   let response: Response;
   try {
@@ -20,10 +29,10 @@ export async function discoverUcpShoppingEndpoint(
     );
   }
   const profile = await response.json();
-  return parseShoppingServiceEndpoint(profile);
+  return parseShoppingService(profile);
 }
 
-function parseShoppingServiceEndpoint(profile: unknown): string {
+function parseShoppingService(profile: unknown): UcpDiscoveredService {
   const root = readRecord(profile);
   const ucp = readRecord(root.ucp);
   const services = readRecord(ucp.services);
@@ -42,5 +51,10 @@ function parseShoppingServiceEndpoint(profile: unknown): string {
     throw new Error('UCP profile missing dev.ucp.shopping REST endpoint');
   }
 
-  return endpoint.replace(/\/$/, '');
+  const capabilities = readOptionalRecord(ucp.capabilities) ?? {};
+
+  return {
+    endpoint: endpoint.replace(/\/$/, ''),
+    supportsAp2Mandate: ap2MandateCapability in capabilities,
+  };
 }

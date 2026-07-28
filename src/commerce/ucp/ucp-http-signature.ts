@@ -10,15 +10,23 @@ export interface UcpHttpSigningConfig {
 export interface UcpHttpSignatureInput {
   readonly method: string;
   readonly url: URL;
-  readonly headers: ReadonlyMap<string, string>;
-  readonly body?: string | undefined;
+  readonly body: string;
 }
 
 export interface UcpHttpSignatureHeaders {
-  readonly contentDigest?: string | undefined;
+  readonly contentDigest: string;
   readonly signatureInput: string;
   readonly signature: string;
 }
+
+/**
+ * Matches the shop's verifier (ucp-php-sdk Rfc9421RequestSignatureService),
+ * not the general RFC 9421 spec text: it signs exactly @method/@target-uri/
+ * content-digest (nothing else), requires created+expires+keyid on every
+ * signature, and verifies with PHP's openssl_verify — which expects DER
+ * ECDSA signatures, not the raw r||s encoding RFC 9421 examples show.
+ */
+const SIGNATURE_LIFETIME_SECONDS = 300;
 
 export class UcpHttpSigner {
   readonly #keyId: string;
@@ -33,38 +41,22 @@ export class UcpHttpSigner {
   }
 
   sign(input: UcpHttpSignatureInput): UcpHttpSignatureHeaders {
-    const headers = new Map(input.headers);
-    const contentDigest = input.body === undefined ? undefined : createContentDigest(input.body);
-
-    if (contentDigest) {
-      headers.set('content-digest', contentDigest);
-    }
-
-    const components = [
-      '@method',
-      '@authority',
-      '@path',
-      'ucp-agent',
-      'idempotency-key',
-      ...(input.body === undefined ? [] : ['content-digest', 'content-type']),
-    ];
+    const contentDigest = createContentDigest(input.body);
     const created = Math.floor(Date.now() / 1000);
-    const signatureParams = `${formatComponentList(components)};created=${created};keyid="${escapeSfString(
-      this.#keyId,
-    )}"`;
-    const signatureBase = buildSignatureBase({
-      components,
-      signatureParams,
-      input,
-      headers,
-    });
-    const signatureBytes = sign('sha256', Buffer.from(signatureBase), {
-      key: this.#privateKey,
-      dsaEncoding: 'ieee-p1363',
-    });
+    const expires = created + SIGNATURE_LIFETIME_SECONDS;
+    const signatureParams =
+      `("@method" "@target-uri" "content-digest");created=${created};expires=${expires};` +
+      `keyid="${escapeSfString(this.#keyId)}";alg="ES256"`;
+    const signatureBase = [
+      `"@method": ${input.method.toUpperCase()}`,
+      `"@target-uri": ${input.url.toString()}`,
+      `"content-digest": ${contentDigest}`,
+      `"@signature-params": ${signatureParams}`,
+    ].join('\n');
+    const signatureBytes = sign('sha256', Buffer.from(signatureBase), { key: this.#privateKey });
 
     return {
-      ...(contentDigest ? { contentDigest } : {}),
+      contentDigest,
       signatureInput: `sig1=${signatureParams}`,
       signature: `sig1=:${signatureBytes.toString('base64')}:`,
     };
@@ -73,50 +65,6 @@ export class UcpHttpSigner {
 
 function createContentDigest(body: string): string {
   return `sha-256=:${createHash('sha256').update(body).digest('base64')}:`;
-}
-
-function buildSignatureBase(input: {
-  readonly components: readonly string[];
-  readonly signatureParams: string;
-  readonly input: UcpHttpSignatureInput;
-  readonly headers: ReadonlyMap<string, string>;
-}): string {
-  const lines = input.components.map((component) => {
-    return `"${component}": ${readComponentValue(component, input.input, input.headers)}`;
-  });
-  lines.push(`"@signature-params": ${input.signatureParams}`);
-
-  return lines.join('\n');
-}
-
-function readComponentValue(
-  component: string,
-  input: UcpHttpSignatureInput,
-  headers: ReadonlyMap<string, string>,
-): string {
-  switch (component) {
-    case '@method':
-      return input.method.toUpperCase();
-    case '@authority':
-      return input.url.host;
-    case '@path':
-      return input.url.pathname;
-    default:
-      return readHeader(headers, component);
-  }
-}
-
-function readHeader(headers: ReadonlyMap<string, string>, name: string): string {
-  const value = headers.get(name);
-  if (value === undefined) {
-    throw new Error(`Cannot sign UCP request without ${name} header`);
-  }
-
-  return value;
-}
-
-function formatComponentList(components: readonly string[]): string {
-  return `(${components.map((component) => `"${component}"`).join(' ')})`;
 }
 
 export function escapeSfString(value: string): string {

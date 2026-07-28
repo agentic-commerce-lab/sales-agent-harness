@@ -1,6 +1,9 @@
 import type {
+  Ap2PaymentMandate,
+  CheckoutTerms,
   CommerceAdapter,
   CompleteCheckoutInput,
+  CompletedCheckoutResult,
   CreateCartInput,
   ProductDetailsInput,
   SearchProductsInput,
@@ -39,6 +42,9 @@ export class HarnessCore {
   readonly #checkoutIdempotencyStore: CheckoutIdempotencyStore;
   readonly #checkoutHandoffMode: 'local' | 'adapter';
   readonly #now: () => Date;
+  readonly #completedCheckouts = new Map<string, CompletedCheckoutResult>();
+  readonly #pendingAp2Mandates = new Map<string, Ap2PaymentMandate>();
+  readonly #pendingCheckoutTerms = new Map<string, CheckoutTerms>();
 
   constructor(options: HarnessCoreOptions) {
     this.#config = options.config;
@@ -56,21 +62,18 @@ export class HarnessCore {
     });
   }
 
-  // fallow-ignore-next-line unused-class-member
   async searchProducts(input: HarnessRequest & SearchProductsInput) {
     return this.#executor.execute('searchProducts', input, (session) =>
       this.#adapter.searchProducts(withCommerceContext(input, session)),
     );
   }
 
-  // fallow-ignore-next-line unused-class-member
   async getProductDetails(input: HarnessRequest & ProductDetailsInput) {
     return this.#executor.execute('getProductDetails', input, (session) =>
       this.#adapter.getProductDetails(withCommerceContext(input, session)),
     );
   }
 
-  // fallow-ignore-next-line unused-class-member
   async createCart(input: HarnessRequest & CreateCartInput) {
     return this.#executor.execute(
       'createCart',
@@ -103,7 +106,6 @@ export class HarnessCore {
     );
   }
 
-  // fallow-ignore-next-line unused-class-member
   async prepareCheckoutHandoff(input: HarnessRequest & { readonly cartId: string }) {
     return this.#executor.execute(
       'prepareCheckoutHandoff',
@@ -122,6 +124,13 @@ export class HarnessCore {
           this.#executor.recordAudit(session, 'checkout_handoff', 'prepareCheckoutHandoff', {
             cartId: handoff.summary.cartId,
           });
+
+          if (handoff.checkoutId) {
+            this.#pendingCheckoutTerms.set(session.agentSessionId, {
+              checkoutId: handoff.checkoutId,
+              total: handoff.summary.total,
+            });
+          }
 
           return handoff;
         }
@@ -152,9 +161,10 @@ export class HarnessCore {
     );
   }
 
-  // fallow-ignore-next-line unused-class-member
   async completeCheckout(input: HarnessRequest & CompleteCheckoutInput) {
     return this.#executor.execute('completeCheckout', input, async (session) => {
+      const ap2Mandate = this.#takePendingAp2Mandate(session.agentSessionId);
+
       if (input.idempotencyKey) {
         const stored = this.#checkoutIdempotencyStore.get({
           merchantId: session.merchantId,
@@ -166,11 +176,18 @@ export class HarnessCore {
           this.#executor.recordAudit(session, 'checkout_completion', 'completeCheckout', {
             cartId: stored.result.summary.cartId,
           });
+          this.#completedCheckouts.set(session.agentSessionId, stored.result);
+          this.#pendingCheckoutTerms.delete(session.agentSessionId);
           return stored.result;
         }
       }
 
-      const completed = await this.#adapter.completeCheckout(withCommerceContext(input, session));
+      const completed = await this.#adapter.completeCheckout({
+        ...withCommerceContext(input, session),
+        ...(ap2Mandate ? { ap2Mandate } : {}),
+      });
+      this.#completedCheckouts.set(session.agentSessionId, completed);
+      this.#pendingCheckoutTerms.delete(session.agentSessionId);
       this.#executor.recordAudit(session, 'checkout_completion', 'completeCheckout', {
         cartId: completed.summary.cartId,
       });
@@ -187,5 +204,45 @@ export class HarnessCore {
 
       return completed;
     });
+  }
+
+  /**
+   * Returns and clears the checkout completed during the current turn, so the
+   * app layer can attach buyer-facing payment instructions (e.g. x402) to the
+   * structured response instead of relying on the model to relay them.
+   */
+  takeCompletedCheckout(agentSessionId: string): CompletedCheckoutResult | undefined {
+    const completed = this.#completedCheckouts.get(agentSessionId);
+    this.#completedCheckouts.delete(agentSessionId);
+
+    return completed;
+  }
+
+  /**
+   * Returns the real terms (checkoutId, total) of the checkout the seller
+   * has most recently prepared but not yet completed, without consuming it —
+   * the buyer needs this on every turn until completion actually happens, to
+   * build an AP2 mandate that pins the real transaction instead of a guess.
+   */
+  peekPendingCheckoutTerms(agentSessionId: string): CheckoutTerms | undefined {
+    return this.#pendingCheckoutTerms.get(agentSessionId);
+  }
+
+  /**
+   * Records an AP2 mandate (CheckoutMandate + PaymentMandate) received from
+   * the buyer's platform ahead of a completeCheckout call. Only the buyer's
+   * platform can attest buyer consent, so the mandate must arrive from the
+   * inbound A2A channel rather than as a model-supplied tool argument — the
+   * completeCheckout tool schema deliberately has no field for it.
+   */
+  recordAp2Mandate(agentSessionId: string, mandate: Ap2PaymentMandate): void {
+    this.#pendingAp2Mandates.set(agentSessionId, mandate);
+  }
+
+  #takePendingAp2Mandate(agentSessionId: string): Ap2PaymentMandate | undefined {
+    const mandate = this.#pendingAp2Mandates.get(agentSessionId);
+    this.#pendingAp2Mandates.delete(agentSessionId);
+
+    return mandate;
   }
 }

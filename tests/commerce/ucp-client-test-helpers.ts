@@ -7,6 +7,17 @@ export const minimalProfile = {
   ucp: { services: { 'dev.ucp.shopping': { endpoint: 'https://shop.example.test/ucp/v1' } } },
 };
 
+export const ap2CapableProfile = {
+  ucp: {
+    services: { 'dev.ucp.shopping': { endpoint: 'https://shop.example.test/ucp/v1' } },
+    capabilities: {
+      'dev.ucp.shopping.ap2_mandate': [
+        { version: '2026-04-08', spec: 'https://ucp.dev/2026-04-08/specification/ap2-mandates' },
+      ],
+    },
+  },
+};
+
 export const testPrivateJwk = {
   kty: 'EC',
   crv: 'P-256',

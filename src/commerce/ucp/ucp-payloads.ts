@@ -1,4 +1,9 @@
-import type { BuyerInput, CartItemInput, FulfillmentInput } from '../../contracts/commerce.js';
+import type {
+  Ap2PaymentMandate,
+  BuyerInput,
+  CartItemInput,
+  FulfillmentInput,
+} from '../../contracts/commerce.js';
 
 export function toUcpLineItemPayload(item: CartItemInput) {
   return {
@@ -28,4 +33,8 @@ export function toUcpFulfillmentPayload(fulfillment: FulfillmentInput) {
       },
     },
   };
+}
+
+export function toUcpAp2Extension(mandate: Ap2PaymentMandate | undefined) {
+  return mandate ? { ap2: { checkout_mandate: mandate.checkoutMandate } } : {};
 }

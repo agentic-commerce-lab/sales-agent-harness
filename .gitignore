@@ -9,5 +9,8 @@ coverage/
 .DS_Store
 *.log
 
+# Local SQLite storage (STORAGE_PROVIDER=sqlite default path)
+data/
+
 # Internal research notes, not part of the public repo
 docs/payments-research.md

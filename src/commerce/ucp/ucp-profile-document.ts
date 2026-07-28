@@ -18,6 +18,7 @@ export interface UcpPlatformProfile {
       readonly 'dev.ucp.shopping.cart': readonly [UcpPlatformCapability];
       readonly 'dev.ucp.shopping.catalog': readonly [UcpPlatformCapability];
       readonly 'dev.ucp.shopping.checkout': readonly [UcpPlatformCapability];
+      readonly 'dev.ucp.shopping.ap2_mandate': readonly [UcpPlatformCapability];
     };
   };
   readonly signing_keys: readonly [PublicEcJwk];
@@ -27,6 +28,7 @@ interface UcpPlatformCapability {
   readonly version: typeof ucpVersion;
   readonly spec: string;
   readonly schema: string;
+  readonly extends?: readonly string[] | undefined;
 }
 
 export interface PublicEcJwk {
@@ -61,6 +63,18 @@ export function createProfileDocument(
         'dev.ucp.shopping.cart': capability('cart'),
         'dev.ucp.shopping.catalog': capability('catalog'),
         'dev.ucp.shopping.checkout': capability('checkout'),
+        // Negotiated fresh per request against the shop's own registered
+        // capabilities (see DefaultCapabilityNegotiator in ucp-php-sdk) — the
+        // shop only activates AP2 for a checkout when this intersects with
+        // its own enabled capabilities and a registered mandate verifier.
+        'dev.ucp.shopping.ap2_mandate': [
+          {
+            version: ucpVersion,
+            spec: 'https://ucp.dev/latest/specification/ap2-mandates/',
+            schema: 'https://ucp.dev/schemas/shopping/ap2-mandates.json',
+            extends: ['dev.ucp.shopping.checkout'],
+          },
+        ],
       },
     },
     signing_keys: [signingKey],

@@ -179,6 +179,13 @@ returns the stored result instead of a duplicate order.
 
 Without those three opt-ins, the same request is blocked — checkout remains handoff-only.
 
+If the buyer side is `examples/a2a-demo`'s buyer agent rather than a raw `curl` request, this act
+gains two more beats by default: the buyer attaches a signed AP2 checkout mandate to every message
+(surfaced in the demo UI once the shop verifies it against a completion), and if the shop returns
+x402 payment instructions on the completed order, the buyer's wallet settles them on-chain and the
+demo UI shows the settlement transaction. Set `AP2_MANDATES_ENABLED=false` in the demo's `.env` to
+run this act without either — see [Checkout And UCP](checkout.md#ap2-payment-mandates-and-x402-settlement).
+
 ## Epilogue — Mara reviews what happened
 
 Every step of both journeys produced structured audit events: session creation, user messages, tool calls, policy decisions (including the blocked 10-jacket update), Shopware/UCP calls, cart changes, the checkout handoff, and the UCP checkout completion. With SQLite storage enabled, Mara can inspect the full trail in `data/sales-agent-harness.sqlite` after the demo — including which capability was invoked, which policy decided what, and where each piece of data came from.
@@ -195,4 +202,5 @@ Every step of both journeys produced structured audit events: session creation, 
 | Checkout handoff | `prepareCheckoutHandoff`, `POST /handoff/validate` | Opaque short-lived token, payment stays in storefront |
 | A2A access | `/.well-known/agent-card.json`, `POST /message:send` | Same harness path as the UI |
 | Automated checkout | `completeCheckout` (UCP only) | Triple opt-in, explicit buyer confirmation, idempotency |
+| AP2 mandate relay | `completeCheckout` (UCP only) | Mandate must arrive via A2A metadata, never a model-fillable argument |
 | Review | Audit log / SQLite | Full structured trail |

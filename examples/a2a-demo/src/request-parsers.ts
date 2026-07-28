@@ -1,5 +1,5 @@
 import type { ConversationEntry, TurnInput } from './buyer-agent.js';
-import { asRecord } from './seller-client.js';
+import { asRecord, type CheckoutTerms } from './seller-client.js';
 
 function parseJsonRecord(raw: string): Record<string, unknown> | undefined {
   try {
@@ -29,12 +29,26 @@ export function parseTurnInput(raw: string): TurnInput | undefined {
     goal,
     ...contextIdField(record.contextId),
     history: parseHistory(record.history),
+    ...checkoutTermsField(record.checkoutTerms),
   };
 }
 
 function contextIdField(value: unknown): { contextId?: string } {
   const contextId = readNonEmptyString(value);
   return contextId ? { contextId } : {};
+}
+
+function checkoutTermsField(value: unknown): { checkoutTerms?: CheckoutTerms } {
+  const record = asRecord(value);
+  const checkoutId = readNonEmptyString(record?.checkoutId);
+  const currency = readNonEmptyString(record?.currency);
+  const totalAmount = typeof record?.totalAmount === 'number' ? record.totalAmount : undefined;
+
+  if (!checkoutId || !currency || totalAmount === undefined) {
+    return {};
+  }
+
+  return { checkoutTerms: { checkoutId, totalAmount, currency } };
 }
 
 function parseHistory(value: unknown): ConversationEntry[] {

@@ -12,6 +12,7 @@ import type {
   ProductSearchResult,
   SearchProductsInput,
   UpdateCartInput,
+  X402PaymentInstructions,
 } from '../../contracts/commerce.js';
 import {
   normalizeUcpCart,
@@ -116,6 +117,7 @@ export class UcpAdapter implements CommerceAdapter {
         summary,
         continueUrl:
           readUcpContinueUrl(checkout) ?? this.#client.getEmbeddedCheckoutUrl(checkout.id),
+        checkoutId: checkout.id,
       };
     } catch (error) {
       throw wrapUcpError('UCP checkout handoff failed', error);
@@ -131,17 +133,43 @@ export class UcpAdapter implements CommerceAdapter {
         buyer: input.buyer,
         fulfillment: input.fulfillment,
       });
-      const checkout = await this.#client.completeCheckout({ checkoutId: input.checkoutId });
+      const checkout = await this.#client.completeCheckout({
+        checkoutId: input.checkoutId,
+        ap2Mandate: input.ap2Mandate,
+      });
+      const x402 = readX402Instructions(checkout);
+      const ap2MerchantAuthorization = checkout.ap2?.merchant_authorization;
 
       return {
         summary: normalizeUcpCart(checkout),
         orderId: checkout.order?.id,
         status: 'completed',
+        ...(x402 ? { x402 } : {}),
+        ...(ap2MerchantAuthorization ? { ap2MerchantAuthorization } : {}),
       };
     } catch (error) {
       throw wrapUcpError('UCP checkout completion failed', error);
     }
   }
+}
+
+function readX402Instructions(checkout: UcpCart): X402PaymentInstructions | undefined {
+  const wire = checkout.x402;
+
+  if (!wire?.pay_url || !wire.deep_link_code) {
+    return undefined;
+  }
+
+  return {
+    handlerId: wire.handler_id ?? 'com.shopware.x402',
+    payUrl: wire.pay_url,
+    deepLinkCode: wire.deep_link_code,
+    scheme: wire.scheme,
+    network: wire.network,
+    asset: wire.asset,
+    assetSymbol: wire.asset_symbol,
+    accessKey: wire.access_key,
+  };
 }
 
 function wrapUcpError(message: string, error: unknown): Error {

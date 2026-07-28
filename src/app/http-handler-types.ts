@@ -1,4 +1,5 @@
 import type { CommerceApiRequest } from '../api/harness-api.js';
+import type { Ap2PaymentMandate } from '../contracts/commerce.js';
 import type { AgentHarnessConfig } from '../contracts/config.js';
 import type { PublicAgentSession } from '../contracts/session.js';
 import type { AgentRuntimeResponse } from '../runtime/agent-runtime.js';
@@ -14,6 +15,7 @@ export interface SalesAgentHttpApp {
   createSession(input: CreateAgentSessionInput): PublicAgentSession;
   chat(input: ChatInput): Promise<AgentRuntimeResponse>;
   validateCheckoutHandoff(input: { readonly handoffId: string }): CheckoutHandoffValidationResult;
+  recordAp2Mandate(agentSessionId: string, mandate: Ap2PaymentMandate): void;
 }
 
 export interface SalesAgentHttpHandler {

@@ -50,7 +50,8 @@
       "**/*.test.tsx",
       "**/*.test.js",
       "**/*.test.jsx",
-      "**/__generated__/**"
+      "**/__generated__/**",
+      "examples/**"
     ],
     "ownership": {
       "emailMode": "handle"

@@ -22,7 +22,9 @@ export function readBody(req: IncomingMessage): Promise<string> {
 }
 
 export function send(res: ServerResponse, status: number, contentType: string, body: string): void {
-  res.writeHead(status, { 'Content-Type': contentType });
+  // The demo page inlines its JavaScript; a cached page keeps running stale
+  // event handlers, so never let the browser reuse it.
+  res.writeHead(status, { 'Content-Type': contentType, 'Cache-Control': 'no-store' });
   res.end(body);
 }
 

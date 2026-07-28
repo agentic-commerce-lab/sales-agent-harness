@@ -33,6 +33,13 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # oxlint's type-aware checks reach into examples/a2a-demo (its own
+      # package, own lockfile) - without this, viem/x402-fetch types are
+      # unresolvable and every consumer of them reports as an `error` type.
+      - name: Install a2a-demo dependencies
+        working-directory: examples/a2a-demo
+        run: npm ci
+
       - name: Verify package scripts
         run: |
           bun -e 'const required = ["format:check", "lint", "typecheck", "quality:contracts", "quality:fta", "quality:fallow", "quality:health", "quality:audit"]; const pkg = await Bun.file("package.json").json(); const missing = required.filter((script) => typeof pkg.scripts?.[script] !== "string"); if (missing.length > 0) { console.error(`Missing package.json scripts required by this workflow: ${missing.join(", ")}`); console.error("Merge assets/package/package-scripts.fragment.json or provide intentional framework-specific replacements before enabling this workflow."); process.exit(1); }'

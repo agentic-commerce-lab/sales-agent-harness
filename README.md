@@ -18,6 +18,8 @@ with an integrated agent runtime built on LangGraph Deep Agents.
   sessions.
 - Completes checkout only in the explicit UCP research path, when the capability and merchant
   policy are both enabled and buyer confirmation data is present.
+- Relays a buyer-supplied AP2 checkout mandate to the shop on completion, opaquely and only when
+  the inbound A2A message carries one — the harness never generates or inspects it.
 - Exposes the same controlled flow through a customer chat UI, direct HTTP commerce routes, and an
   A2A-compatible HTTP+JSON surface.
 
@@ -52,6 +54,9 @@ Use this path for a local smoke test against a real Shopware Store API.
    HOST=127.0.0.1
    PORT=3000
    ```
+
+   To run the model through OpenRouter (or any OpenAI-compatible endpoint) instead of OpenAI
+   directly, set `OPENAI_BASE_URL` — see [Configuration](docs/configuration.md).
 
 3. Start with Docker:
 

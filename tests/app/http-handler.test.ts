@@ -256,6 +256,7 @@ function createSessionChatApp(calls: unknown[]): SalesAgentHttpApp {
       handle: async (input) => ({ status: 'ok', value: input }),
     },
     validateCheckoutHandoff: () => ({ status: 'not_found' as const }),
+    recordAp2Mandate: () => {},
   };
 }
 
@@ -290,6 +291,7 @@ function createCommerceRoutingApp(): SalesAgentHttpApp {
       handoffId,
       summary: createCartSummary(),
     }),
+    recordAp2Mandate: () => {},
   };
 }
 
@@ -422,3 +424,16 @@ function a2aRequest(
     body: JSON.stringify(body),
   });
 }
+
+test('GET / returns a 200 discovery pointer instead of 404', async () => {
+  const handler = createSalesAgentHttpHandler({ app: createCommerceRoutingApp() });
+  const rootResponse = await handler.handle(new Request('https://harness.example.test/'));
+  expect(rootResponse.status).toBe(200);
+  expect(await rootResponse.json()).toMatchObject({
+    endpoints: {
+      agentCard: '/.well-known/agent-card.json',
+      commerceA2a: '/commerce/a2a',
+      commerceCustomer: '/commerce/customer',
+    },
+  });
+});

@@ -23,4 +23,18 @@ describe('loadAgentRuntimeEnvironmentConfig', () => {
       'Missing required environment variable OPENAI_API_KEY',
     );
   });
+
+  test('points at an OpenAI-compatible endpoint when OPENAI_BASE_URL is set', () => {
+    const config = loadAgentRuntimeEnvironmentConfig({
+      OPENAI_API_KEY: 'or-test-key',
+      OPENAI_BASE_URL: 'https://openrouter.ai/api/v1',
+      AGENT_RUNTIME_MODEL: 'anthropic/claude-3.5-sonnet',
+    });
+
+    expect(config).toEqual({
+      apiKey: 'or-test-key',
+      modelName: 'anthropic/claude-3.5-sonnet',
+      baseURL: 'https://openrouter.ai/api/v1',
+    });
+  });
 });
