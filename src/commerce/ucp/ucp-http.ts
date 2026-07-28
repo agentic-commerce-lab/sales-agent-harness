@@ -19,7 +19,16 @@ export function createUcpHttpClient(
   let servicePromise: Promise<UcpDiscoveredService> | undefined;
 
   const discoverService = (): Promise<UcpDiscoveredService> => {
-    servicePromise ??= discoverUcpShoppingService(fetchImplementation, baseUrl);
+    // Only the resolved case is cached: a client is constructed once and
+    // reused for the process lifetime, so caching a rejected promise (e.g.
+    // from a transient failure while the shop is still starting up) would
+    // otherwise poison every future request until the process restarts.
+    servicePromise ??= discoverUcpShoppingService(fetchImplementation, baseUrl).catch(
+      (error: unknown) => {
+        servicePromise = undefined;
+        throw error;
+      },
+    );
     return servicePromise;
   };
 

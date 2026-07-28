@@ -41,10 +41,7 @@ export function createRecordingUcpClient(profile: unknown = minimalProfile): {
   const fetchImplementation = Object.assign(
     async (url: string | URL | Request, init?: RequestInit) => {
       if (requestUrl(url).endsWith('/.well-known/ucp')) {
-        return new Response(JSON.stringify(profile), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
+        return jsonProfileResponse(profile);
       }
       requests.push({
         url: requestUrl(url),
@@ -52,10 +49,7 @@ export function createRecordingUcpClient(profile: unknown = minimalProfile): {
         body: JSON.parse(requestBody(init?.body)),
       });
 
-      return new Response(JSON.stringify(createEmptyCheckout()), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      });
+      return emptyCheckoutResponse();
     },
     { preconnect: () => {} },
   ) satisfies typeof fetch;
@@ -66,7 +60,43 @@ export function createRecordingUcpClient(profile: unknown = minimalProfile): {
   };
 }
 
-export function createEmptyCheckout() {
+export function createDiscoveryCountingClient(
+  discoveryResponse: (callNumber: number) => Response,
+): {
+  readonly client: FetchUcpClient;
+  readonly discoveryCalls: readonly string[];
+} {
+  const discoveryCalls: string[] = [];
+  const fetchImplementation = Object.assign(
+    async (url: string | URL | Request) => {
+      const urlStr = requestUrl(url);
+      if (urlStr.endsWith('/.well-known/ucp')) {
+        discoveryCalls.push(urlStr);
+        return discoveryResponse(discoveryCalls.length);
+      }
+      return emptyCheckoutResponse();
+    },
+    { preconnect: () => {} },
+  ) satisfies typeof fetch;
+
+  return { client: new FetchUcpClient(createUcpConfig(), fetchImplementation), discoveryCalls };
+}
+
+export function jsonProfileResponse(profile: unknown = minimalProfile): Response {
+  return new Response(JSON.stringify(profile), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
+}
+
+function emptyCheckoutResponse(): Response {
+  return new Response(JSON.stringify(createEmptyCheckout()), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
+}
+
+function createEmptyCheckout() {
   return {
     id: 'checkout-1',
     currency: 'EUR',

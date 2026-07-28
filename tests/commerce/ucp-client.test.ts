@@ -9,9 +9,10 @@ import {
   assertCreateCheckoutRequest,
   assertGetCheckoutRequest,
   assertUpdateCheckoutRequest,
-  createEmptyCheckout,
+  createDiscoveryCountingClient,
   createRecordingUcpClient,
   createUcpConfig,
+  jsonProfileResponse,
   minimalProfile,
   requestBody,
   requestUrl,
@@ -84,26 +85,8 @@ describe('FetchUcpClient AP2 mandates', () => {
 
 describe('FetchUcpClient endpoint discovery', () => {
   test('caches the discovered endpoint across multiple API calls', async () => {
-    const discoveryCalls: string[] = [];
-    const fetchImplementation = Object.assign(
-      async (url: string | URL | Request) => {
-        const urlStr = requestUrl(url);
-        if (urlStr.endsWith('/.well-known/ucp')) {
-          discoveryCalls.push(urlStr);
-          return new Response(JSON.stringify(minimalProfile), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          });
-        }
-        return new Response(JSON.stringify(createEmptyCheckout()), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      },
-      { preconnect: () => {} },
-    ) satisfies typeof fetch;
+    const { client, discoveryCalls } = createDiscoveryCountingClient(() => jsonProfileResponse());
 
-    const client = new FetchUcpClient(createUcpConfig(), fetchImplementation);
     await client.createCheckout({ lineItems: [{ productId: 'p1', quantity: 1 }] });
     await client.completeCheckout({ checkoutId: 'checkout-1' });
 
@@ -121,6 +104,20 @@ describe('FetchUcpClient endpoint discovery', () => {
     const rejected = client.createCheckout({ lineItems: [] });
     await expectRejectsWith(rejected, 'UCP endpoint discovery failed');
     await expectRejectsWith(rejected, 'returned 404');
+  });
+
+  test('retries discovery on the next call after a transient failure', async () => {
+    const { client, discoveryCalls } = createDiscoveryCountingClient((callNumber) =>
+      callNumber === 1 ? new Response('Not Found', { status: 404 }) : jsonProfileResponse(),
+    );
+
+    await expectRejectsWith(
+      client.createCheckout({ lineItems: [] }),
+      'UCP endpoint discovery failed',
+    );
+    await client.createCheckout({ lineItems: [{ productId: 'p1', quantity: 1 }] });
+
+    expect(discoveryCalls).toHaveLength(2);
   });
 
   test('throws a descriptive error when the profile is missing dev.ucp.shopping', async () => {
