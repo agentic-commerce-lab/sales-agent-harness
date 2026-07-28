@@ -10,6 +10,7 @@ export function createA2aAgentCard(origin: string, config?: AgentHarnessConfig):
     version: '0.1.0',
     protocolVersion: a2aProtocolVersion,
     url: origin,
+    documentationUrl: `${origin}/openapi.json`,
     capabilities: {
       streaming: false,
       pushNotifications: false,

@@ -24,6 +24,7 @@ import {
   jsonResponse,
   toErrorResponse,
 } from './http-responses.js';
+import { createOpenApiDocument } from './openapi-document.js';
 
 export type {
   CreateSalesAgentHttpHandlerInput,
@@ -77,8 +78,9 @@ async function handleRequest(
 }
 
 function handleGetRequest(input: CreateSalesAgentHttpHandlerInput, url: URL): Response {
-  if (url.pathname === '/health') {
-    return jsonResponse({ status: 'ok' });
+  const staticResponse = staticGetResponse(input, url);
+  if (staticResponse) {
+    return staticResponse;
   }
 
   if (url.pathname === '/.well-known/ucp' && input.ucpPlatformProfile) {
@@ -91,33 +93,43 @@ function handleGetRequest(input: CreateSalesAgentHttpHandlerInput, url: URL): Re
     });
   }
 
-  if (url.pathname === '/.well-known/agent-card.json') {
-    return a2aResponse(createA2aAgentCard(url.origin, input.agentConfig));
-  }
-
-  if (url.pathname === '/examples/customer-ui') {
-    return htmlResponse(exampleCustomerUiHtml);
-  }
-
   if (url.pathname === '/checkout-resume' && input.checkoutResume) {
     return checkoutResumeResponse(url, input.checkoutResume);
   }
 
-  if (url.pathname === '/') {
-    return jsonResponse({
-      service: 'sales-agent-harness',
-      description: 'Seller commerce agent. Discover capabilities via the agent card.',
-      endpoints: {
-        agentCard: '/.well-known/agent-card.json',
-        commerceA2a: '/commerce/a2a',
-        commerceCustomer: '/commerce/customer',
-        sessions: '/sessions',
-        health: '/health',
-      },
-    });
-  }
-
   return jsonResponse({ error: 'Not found' }, 404);
+}
+
+/** Exact-match GET routes with no request-specific guards. */
+function staticGetResponse(
+  input: CreateSalesAgentHttpHandlerInput,
+  url: URL,
+): Response | undefined {
+  switch (url.pathname) {
+    case '/health':
+      return jsonResponse({ status: 'ok' });
+    case '/.well-known/agent-card.json':
+      return a2aResponse(createA2aAgentCard(url.origin, input.agentConfig));
+    case '/examples/customer-ui':
+      return htmlResponse(exampleCustomerUiHtml);
+    case '/openapi.json':
+      return jsonResponse(createOpenApiDocument(url.origin));
+    case '/':
+      return jsonResponse({
+        service: 'sales-agent-harness',
+        description: 'Seller commerce agent. Discover capabilities via the agent card.',
+        endpoints: {
+          agentCard: '/.well-known/agent-card.json',
+          openapi: '/openapi.json',
+          commerceA2a: '/commerce/a2a',
+          commerceCustomer: '/commerce/customer',
+          sessions: '/sessions',
+          health: '/health',
+        },
+      });
+    default:
+      return undefined;
+  }
 }
 
 function checkoutResumeResponse(

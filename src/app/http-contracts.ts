@@ -45,7 +45,7 @@ const fulfillmentSchema = z.object({
   }),
 });
 
-const commerceRequestSchema = z.discriminatedUnion('capability', [
+export const commerceRequestSchema = z.discriminatedUnion('capability', [
   z.object({
     capability: z.literal('searchProducts'),
     agentSessionId: z.string().min(1),
