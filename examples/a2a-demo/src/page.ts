@@ -31,7 +31,7 @@ const demoPageBody = `
     <div class="acard buyer" id="bc">
       <div class="ac-role">Buyer Agent</div>
       <div class="ac-name">Buyer Agent</div>
-      <div class="ac-ver">gpt-5-mini &middot; autonomous</div>
+      <div class="ac-ver">__BUYER_MODEL__ &middot; autonomous</div>
       <div class="ac-row">
         <div class="sdot b" id="bdot"></div>
         <span id="bst">Idle</span>
@@ -104,7 +104,7 @@ const demoPageBody = `
 
 `;
 
-export function demoPageHtml(): string {
+export function demoPageHtml(buyerModelName: string): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -113,7 +113,7 @@ export function demoPageHtml(): string {
   <title>A2A Demo — Buyer Agent</title>
   <style>${demoPageStyles}</style>
 </head>
-${demoPageBody}
+${demoPageBody.replace('__BUYER_MODEL__', buyerModelName)}
 <script>${demoPageScript}</script>
 
 </body>

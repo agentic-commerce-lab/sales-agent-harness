@@ -102,6 +102,17 @@ export async function decideBuyerMessage(
   return parseCompletionText(await res.json());
 }
 
+/** The model that will actually be used, without requiring an API key — for display purposes. */
+export function resolveBuyerModelName(): string {
+  const provider = process.env.BUYER_MODEL_PROVIDER ?? 'openai';
+
+  return process.env.BUYER_MODEL ?? defaultBuyerModel(provider);
+}
+
+function defaultBuyerModel(provider: string): string {
+  return provider === 'openrouter' ? 'openai/gpt-5-mini' : 'gpt-5-mini';
+}
+
 function resolveBuyerModelConfig(): BuyerModelConfig {
   const provider = process.env.BUYER_MODEL_PROVIDER ?? 'openai';
 
@@ -112,7 +123,7 @@ function resolveBuyerModelConfig(): BuyerModelConfig {
     return {
       baseUrl: process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
       apiKey,
-      model: process.env.BUYER_MODEL ?? 'openai/gpt-5-mini',
+      model: resolveBuyerModelName(),
     };
   }
 
@@ -126,7 +137,7 @@ function resolveBuyerModelConfig(): BuyerModelConfig {
   return {
     baseUrl: 'https://api.openai.com/v1',
     apiKey,
-    model: process.env.BUYER_MODEL ?? 'gpt-5-mini',
+    model: resolveBuyerModelName(),
   };
 }
 
