@@ -118,4 +118,36 @@ describe('API boundaries', () => {
     expect(JSON.stringify(response)).not.toContain('handoffId');
     expect(JSON.stringify(response)).toContain('h=handoff_opaque');
   });
+
+  test('A2A checkout handoff passes through the UCP checkoutId so the loop can close', async () => {
+    const { harness } = createHarness();
+    const ucpHarness = {
+      ...harness,
+      prepareCheckoutHandoff: async () => ({
+        status: 'ok' as const,
+        policyDecision: allowDecision,
+        value: {
+          summary: {
+            cartId: 'checkout-1',
+            items: [],
+            subtotal: { amount: 1, currency: 'USD' },
+            total: { amount: 1, currency: 'USD' },
+            currency: 'USD',
+          },
+          continueUrl: 'https://shop.example.test/ucp/embedded/checkout/checkout-1',
+          checkoutId: 'checkout-1',
+        },
+      }),
+    } satisfies CommerceHarnessApi;
+    const api = createA2aApi(ucpHarness);
+
+    const response = await api.handle({
+      capability: 'prepareCheckoutHandoff',
+      agentSessionId: 'session-1',
+      cartId: 'cart-1',
+    });
+
+    expect(response.status).toBe('ok');
+    expect(JSON.stringify(response)).toContain('"checkoutId":"checkout-1"');
+  });
 });

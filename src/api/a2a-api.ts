@@ -8,6 +8,7 @@ export type A2aApiResponse =
   | HarnessResponse<{
       readonly summary: CheckoutHandoffResult['summary'];
       readonly continueUrl: string;
+      readonly checkoutId?: string | undefined;
     }>;
 
 export interface A2aApi {
@@ -29,6 +30,10 @@ export function createA2aApi(harness: CommerceHarnessApi): A2aApi {
         value: {
           summary: response.value.summary,
           continueUrl: response.value.continueUrl,
+          // Pass through the UCP checkout session id so an A2A buyer can close
+          // the loop (completeCheckout requires it). Without this the A2A
+          // surface produced no way to reach a purchase (see post-mortem F4).
+          ...(response.value.checkoutId ? { checkoutId: response.value.checkoutId } : {}),
         },
       };
     },
