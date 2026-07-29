@@ -1,13 +1,8 @@
 import { type Ap2Mandate, createAp2Mandate, isAp2MandatesEnabled } from './ap2-mandate.js';
 import { createBuyerPrompt, DONE_SIGNAL } from './buyer-prompt.js';
-import {
-  asArray,
-  asRecord,
-  type CheckoutTerms,
-  callSellerA2A,
-  readString,
-} from './seller-client.js';
-import { payWithX402, type X402PaymentOutcome } from './x402-payment.js';
+import { asArray, asRecord, compact, readString } from './json.js';
+import { type CheckoutTerms, callSellerA2A } from './seller-client.js';
+import { isX402Enabled, payWithX402, type X402PaymentOutcome } from './x402-payment.js';
 
 export interface ConversationEntry {
   role: 'buyer' | 'seller';
@@ -32,6 +27,8 @@ export type TurnResult =
       toolCalls: string[];
       contextId: string;
       payment?: X402PaymentOutcome;
+      /** Set instead of `payment` when x402 is unavailable: open this to finish in a browser. */
+      handoffUrl?: string;
       ap2Mandate?: Ap2Mandate;
       ap2MerchantAuthorization?: string;
       checkoutTerms?: CheckoutTerms;
@@ -44,19 +41,13 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     return { done: true };
   }
 
-  // Attached to every outbound message so it is already on the session
-  // whenever the seller's LLM decides to call completeCheckout — the
-  // harness never asks the model to supply one, see recordAp2Mandate.
-  // Skipped entirely when AP2_MANDATES_ENABLED=false.
-  const ap2Mandate = isAp2MandatesEnabled()
-    ? createAp2Mandate({
-        contextId: input.contextId,
-        goal: input.goal,
-        ...(input.checkoutTerms ? { checkoutTerms: input.checkoutTerms } : {}),
-      })
-    : undefined;
+  const ap2Mandate = createTurnMandate(input);
   const sellerResult = await callSellerA2A(buyerMessage, input.contextId, ap2Mandate);
-  const payment = sellerResult.x402 ? await payWithX402(sellerResult.x402) : undefined;
+  // x402 is the primary path; when this client has it disabled (or the seller
+  // didn't offer it), fall back to the shop's continue_url for a human.
+  const useX402 = isX402Enabled() && Boolean(sellerResult.x402);
+  const payment = useX402 && sellerResult.x402 ? await payWithX402(sellerResult.x402) : undefined;
+  const handoffUrl = !useX402 && sellerResult.continueUrl ? sellerResult.continueUrl : undefined;
 
   return {
     done: false,
@@ -64,13 +55,32 @@ export async function runTurn(input: TurnInput): Promise<TurnResult> {
     sellerResponse: sellerResult.message,
     toolCalls: sellerResult.toolCalls,
     contextId: sellerResult.contextId,
-    ...(ap2Mandate ? { ap2Mandate } : {}),
-    ...(sellerResult.ap2MerchantAuthorization
-      ? { ap2MerchantAuthorization: sellerResult.ap2MerchantAuthorization }
-      : {}),
-    ...(payment ? { payment } : {}),
     checkoutTerms: sellerResult.checkoutTerms ?? input.checkoutTerms,
+    ...compact({
+      ap2Mandate,
+      ap2MerchantAuthorization: sellerResult.ap2MerchantAuthorization,
+      payment,
+      handoffUrl,
+    }),
   };
+}
+
+/**
+ * Attached to every outbound message so it is already on the session whenever
+ * the seller's LLM decides to call completeCheckout — the harness never asks
+ * the model to supply one, see recordAp2Mandate. Undefined (skipped) when
+ * AP2_MANDATES_ENABLED=false.
+ */
+function createTurnMandate(input: TurnInput): Ap2Mandate | undefined {
+  if (!isAp2MandatesEnabled()) {
+    return undefined;
+  }
+
+  return createAp2Mandate({
+    contextId: input.contextId,
+    goal: input.goal,
+    ...(input.checkoutTerms ? { checkoutTerms: input.checkoutTerms } : {}),
+  });
 }
 
 interface BuyerModelConfig {

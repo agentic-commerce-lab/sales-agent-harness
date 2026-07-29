@@ -1,5 +1,9 @@
 import type { Ap2Mandate } from './ap2-mandate.js';
-import type { X402Instructions } from './x402-payment.js';
+import { asArray, asRecord, compact, readString } from './json.js';
+import { isX402Enabled, type X402Instructions } from './x402-payment.js';
+
+/** The shop's x402 UCP payment handler id (what this demo can settle). */
+const X402_HANDLER_ID = 'com.shopware.x402';
 
 export interface CheckoutTerms {
   checkoutId: string;
@@ -13,6 +17,8 @@ export interface SellerA2AResult {
   contextId: string;
   orderId?: string;
   x402?: X402Instructions;
+  /** Fallback browser checkout URL (UCP continue_url) when x402 can't be used. */
+  continueUrl?: string;
   ap2MerchantAuthorization?: string;
   checkoutTerms?: CheckoutTerms;
 }
@@ -51,6 +57,9 @@ function createSendMessageBody(
 
   if (contextId) metadata.agentSessionId = contextId;
   if (ap2Mandate) metadata.ap2Mandate = ap2Mandate;
+  // Declare the payment handlers this client can settle. Empty (x402 disabled)
+  // → the shop finds no shared method and hands off to a browser checkout.
+  metadata.supportedPaymentHandlers = isX402Enabled() ? [X402_HANDLER_ID] : [];
 
   return {
     message: {
@@ -78,17 +87,13 @@ function parseSellerResponse(payload: unknown): SellerA2AResult {
 function parseOptionalFields(
   metadata: Record<string, unknown> | undefined,
 ): Partial<SellerA2AResult> {
-  const orderId = readString(metadata?.orderId);
-  const x402 = parseX402Instructions(metadata?.x402);
-  const ap2MerchantAuthorization = readString(metadata?.ap2MerchantAuthorization);
-  const checkoutTerms = parseCheckoutTerms(metadata?.checkoutTerms);
-
-  return {
-    ...(orderId ? { orderId } : {}),
-    ...(x402 ? { x402 } : {}),
-    ...(ap2MerchantAuthorization ? { ap2MerchantAuthorization } : {}),
-    ...(checkoutTerms ? { checkoutTerms } : {}),
-  };
+  return compact({
+    orderId: readString(metadata?.orderId) || undefined,
+    x402: parseX402Instructions(metadata?.x402),
+    continueUrl: readString(metadata?.continueUrl) || undefined,
+    ap2MerchantAuthorization: readString(metadata?.ap2MerchantAuthorization) || undefined,
+    checkoutTerms: parseCheckoutTerms(metadata?.checkoutTerms),
+  });
 }
 
 function parseCheckoutTerms(value: unknown): CheckoutTerms | undefined {
@@ -148,20 +153,4 @@ function readStatusMessageText(root: Record<string, unknown> | undefined): strin
 
 function filterStrings(values: unknown[]): string[] {
   return values.filter((value): value is string => typeof value === 'string');
-}
-
-export function readString(value: unknown): string {
-  return typeof value === 'string' ? value : '';
-}
-
-export function asArray(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
-}
-
-export function asRecord(value: unknown): Record<string, unknown> | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined;
-  }
-
-  return Object.fromEntries(Object.entries(value));
 }

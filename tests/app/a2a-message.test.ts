@@ -23,15 +23,23 @@ const taskSchema = z.object({
 
 function createApp(options?: {
   readonly recordedMandates?: { agentSessionId: string; mandate: Ap2PaymentMandate }[];
+  readonly recordedCapabilities?: {
+    agentSessionId: string;
+    supportedPaymentHandlers: readonly string[];
+  }[];
   readonly chatResponse?: AgentRuntimeResponse;
 }): A2aHttpApp {
   const recordedMandates = options?.recordedMandates ?? [];
+  const recordedCapabilities = options?.recordedCapabilities ?? [];
 
   return {
     createSession: () => ({ agentSessionId: 'session-1' }),
     chat: async () => options?.chatResponse ?? { message: 'ok', toolCalls: [] },
     recordAp2Mandate: (agentSessionId, mandate) => {
       recordedMandates.push({ agentSessionId, mandate });
+    },
+    recordPaymentCapability: (agentSessionId, supportedPaymentHandlers) => {
+      recordedCapabilities.push({ agentSessionId, supportedPaymentHandlers });
     },
   };
 }

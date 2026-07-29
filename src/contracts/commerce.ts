@@ -128,6 +128,12 @@ export interface CompleteCheckoutInput {
   readonly fulfillment: FulfillmentInput;
   readonly executionContext?: CommerceExecutionContext;
   readonly ap2Mandate?: Ap2PaymentMandate | undefined;
+  /**
+   * UCP payment handler ids this client supports. The adapter commits the first
+   * one the shop accepts; if none is supported the shop hands off to a browser
+   * checkout (requires_escalation) instead of placing an order.
+   */
+  readonly supportedPaymentHandlers?: readonly string[] | undefined;
 }
 
 export interface ProductSearchResult {
@@ -174,10 +180,22 @@ export interface X402PaymentInstructions {
 export interface CompletedCheckoutResult {
   readonly summary: CartSummary;
   readonly orderId?: string | undefined;
-  readonly status: 'completed';
+  /**
+   * 'completed' — order placed (payment settles via x402 or was taken).
+   * 'requires_escalation' — no mutually-supported payment method, so NO order
+   * was placed; the buyer must finish in a browser via `continueUrl`.
+   */
+  readonly status: 'completed' | 'requires_escalation';
   readonly x402?: X402PaymentInstructions | undefined;
   /** JWS Detached Content signature proving the shop verified the AP2 mandate. */
   readonly ap2MerchantAuthorization?: string | undefined;
+  /**
+   * Fallback web checkout URL (UCP `continue_url`). x402 stays the primary
+   * payment path; this lets a client that can't pay programmatically (e.g.
+   * x402 unsupported/disabled) hand the buyer off to the shop's browser
+   * checkout instead.
+   */
+  readonly continueUrl?: string | undefined;
 }
 
 /**

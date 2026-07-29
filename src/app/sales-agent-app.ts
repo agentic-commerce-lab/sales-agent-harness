@@ -40,5 +40,7 @@ export function createSalesAgentHarnessApp(
       validateCheckoutHandoff(input, context, handoffInput),
     recordAp2Mandate: (agentSessionId, mandate) =>
       harness.recordAp2Mandate(agentSessionId, mandate),
+    recordPaymentCapability: (agentSessionId, supportedPaymentHandlers) =>
+      harness.recordPaymentCapability(agentSessionId, supportedPaymentHandlers),
   };
 }

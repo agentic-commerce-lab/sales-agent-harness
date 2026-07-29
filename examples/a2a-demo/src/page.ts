@@ -80,14 +80,14 @@ const demoPageBody = `
         </svg>
       </div>
       <div>
-        <div class="agr-t">Order Created</div>
+        <div class="agr-t" id="agr-title">Order Created</div>
         <div class="agr-s" id="agr-sub">A2A task completed</div>
       </div>
     </div>
     <div class="agr-stats">
       <div class="astat"><div class="as-lbl">Goal</div><div class="as-val" id="agr-goal">&mdash;</div></div>
       <div class="astat"><div class="as-lbl">Messages</div><div class="as-val" id="agr-msgs">0</div></div>
-      <div class="astat"><div class="as-lbl">Status</div><div class="as-val" style="color:var(--seller)">Order Placed</div></div>
+      <div class="astat"><div class="as-lbl">Status</div><div class="as-val" id="agr-status" style="color:var(--seller)">Order Placed</div></div>
     </div>
   </div>
 

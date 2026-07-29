@@ -44,6 +44,7 @@ export class HarnessCore {
   readonly #now: () => Date;
   readonly #completedCheckouts = new Map<string, CompletedCheckoutResult>();
   readonly #pendingAp2Mandates = new Map<string, Ap2PaymentMandate>();
+  readonly #pendingPaymentHandlers = new Map<string, readonly string[]>();
   readonly #pendingCheckoutTerms = new Map<string, CheckoutTerms>();
 
   constructor(options: HarnessCoreOptions) {
@@ -164,6 +165,7 @@ export class HarnessCore {
   async completeCheckout(input: HarnessRequest & CompleteCheckoutInput) {
     return this.#executor.execute('completeCheckout', input, async (session) => {
       const ap2Mandate = this.#takePendingAp2Mandate(session.agentSessionId);
+      const supportedPaymentHandlers = this.#takePaymentCapability(session.agentSessionId);
 
       if (input.idempotencyKey) {
         const stored = this.#checkoutIdempotencyStore.get({
@@ -185,6 +187,7 @@ export class HarnessCore {
       const completed = await this.#adapter.completeCheckout({
         ...withCommerceContext(input, session),
         ...(ap2Mandate ? { ap2Mandate } : {}),
+        ...(supportedPaymentHandlers ? { supportedPaymentHandlers } : {}),
       });
       this.#completedCheckouts.set(session.agentSessionId, completed);
       this.#pendingCheckoutTerms.delete(session.agentSessionId);
@@ -237,6 +240,20 @@ export class HarnessCore {
    */
   recordAp2Mandate(agentSessionId: string, mandate: Ap2PaymentMandate): void {
     this.#pendingAp2Mandates.set(agentSessionId, mandate);
+  }
+
+  recordPaymentCapability(
+    agentSessionId: string,
+    supportedPaymentHandlers: readonly string[],
+  ): void {
+    this.#pendingPaymentHandlers.set(agentSessionId, supportedPaymentHandlers);
+  }
+
+  #takePaymentCapability(agentSessionId: string): readonly string[] | undefined {
+    const handlers = this.#pendingPaymentHandlers.get(agentSessionId);
+    this.#pendingPaymentHandlers.delete(agentSessionId);
+
+    return handlers;
   }
 
   #takePendingAp2Mandate(agentSessionId: string): Ap2PaymentMandate | undefined {

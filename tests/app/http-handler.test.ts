@@ -257,6 +257,7 @@ function createSessionChatApp(calls: unknown[]): SalesAgentHttpApp {
     },
     validateCheckoutHandoff: () => ({ status: 'not_found' as const }),
     recordAp2Mandate: () => {},
+    recordPaymentCapability: () => {},
   };
 }
 
@@ -292,6 +293,7 @@ function createCommerceRoutingApp(): SalesAgentHttpApp {
       summary: createCartSummary(),
     }),
     recordAp2Mandate: () => {},
+    recordPaymentCapability: () => {},
   };
 }
 

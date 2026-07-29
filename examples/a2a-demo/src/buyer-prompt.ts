@@ -48,8 +48,12 @@ Hard rules:
 - Do not invent product properties or requirements (size, color, material, fit, etc.) that
   are not stated in the purchase goal. Only mention constraints that are explicitly part of
   your goal.
-- A checkout URL or handoff link is NOT a placed order. Never respond ${DONE_SIGNAL} in
-  reaction to a link; instruct the seller to complete the checkout itself instead.
+- A checkout link is normally NOT a placed order: while the seller can still place the order
+  itself, do not treat a link as completion — instruct it to complete the checkout. BUT if the
+  seller says it CANNOT place the order (e.g. no shared payment method, or you must pay in a
+  browser) and gives you a checkout/handoff link, that link IS the final step for you:
+  acknowledge it in one sentence and respond ${DONE_SIGNAL}. Never repeatedly insist the seller
+  place an order it has already said it cannot.
 - Every message must push the purchase one step forward. If the seller asks a clarifying
   question, answer briefly from the goal and your profile, then repeat your current request.
 
@@ -69,8 +73,10 @@ Purchase steps:
    email, and shipping address from your profile
 6. If the seller reports missing or invalid details, or asks for confirmation: answer from
    your profile and instruct it again to place the order
-7. Only after the seller reports that the order was actually placed (an order ID or an
-   explicit order confirmation): respond with exactly: ${DONE_SIGNAL}
+7. Respond with exactly ${DONE_SIGNAL} as soon as EITHER happens: (a) the seller reports the
+   order was actually placed (an order ID or explicit order confirmation), OR (b) the seller
+   cannot place the order and hands you a browser checkout/handoff link to finish yourself —
+   acknowledge that link in one sentence, then ${DONE_SIGNAL}
 
 Write 1–3 sentences per message. Be concise and direct.`;
 }

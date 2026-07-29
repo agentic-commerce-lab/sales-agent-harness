@@ -134,6 +134,34 @@ export const demoPageScript = `
     }, 40);
   }
 
+  function appendHandoff(data) {
+    msgCount++;
+    var id = 'hof-' + String(msgCount).padStart(3, '0');
+    var url = String(data.continueUrl || '');
+    var safe = url.indexOf('https://') === 0 || url.indexOf('http://') === 0;
+    var link = safe
+      ? '<a href="' + escHtml(url) + '" target="_blank" rel="noopener noreferrer">Continue checkout in browser ↗</a>'
+      : escHtml(url);
+
+    var html = '<div class="pay" id="' + id + '">'
+      + '<div class="pay-hdr">'
+      + '<span class="pay-badge">handoff</span>'
+      + '<span class="pay-title">x402 unavailable — finish in browser</span>'
+      + '<span class="pay-ts">' + ts() + '</span>'
+      + '</div>'
+      + '<div class="pay-grid">' + payCell('Checkout link', link) + '</div>'
+      + '</div>';
+
+    document.getElementById('feed').insertAdjacentHTML('beforeend', html);
+    document.getElementById('cnt').textContent = msgCount + (msgCount === 1 ? ' message' : ' messages');
+
+    setTimeout(function() {
+      var el = document.getElementById(id);
+      if (el) el.classList.add('vis');
+      scrollToLatest();
+    }, 40);
+  }
+
   function appendAp2(data) {
     msgCount++;
     var id = 'ap2-' + String(msgCount).padStart(3, '0');
@@ -197,14 +225,23 @@ export const demoPageScript = `
       appendAp2(data);
     } else if (type === 'payment') {
       appendPayment(data);
+    } else if (type === 'handoff') {
+      appendHandoff(data);
     } else if (type === 'done') {
       setCard('buyer', 'done');
       setCard('seller', 'done');
-      document.getElementById('cst').textContent = 'Complete';
+      var handoff = data.outcome === 'handoff';
+      document.getElementById('cst').textContent = handoff ? 'Handed off' : 'Complete';
       if (data.contextId) contextId = data.contextId;
 
+      // No order is placed on a handoff — say so instead of claiming an order.
+      document.getElementById('agr-title').textContent = handoff ? 'Checkout handed off' : 'Order Created';
+      document.getElementById('agr-status').textContent = handoff ? 'Awaiting browser checkout' : 'Order Placed';
+
       var ctx = contextId || '?';
-      document.getElementById('agr-sub').textContent = 'contextId: ' + ctx + ' · ' + msgCount + ' messages exchanged';
+      document.getElementById('agr-sub').textContent = handoff
+        ? 'No order placed — buyer finishes in a browser'
+        : 'contextId: ' + ctx + ' · ' + msgCount + ' messages exchanged';
       document.getElementById('agr-goal').textContent = currentGoal.length > 40 ? currentGoal.slice(0, 38) + '…' : currentGoal;
       document.getElementById('agr-msgs').textContent = String(msgCount);
 
