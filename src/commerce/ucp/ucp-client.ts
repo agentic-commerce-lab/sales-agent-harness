@@ -91,12 +91,19 @@ export class FetchUcpClient implements UcpClient {
     readonly lineItems: readonly CartItemInput[];
     readonly buyer: BuyerInput;
     readonly fulfillment: FulfillmentInput;
+    readonly paymentHandlerId?: string | undefined;
   }): Promise<UcpCart> {
     return this.#cartRequest('PATCH', checkoutPath(input.checkoutId), {
       id: input.checkoutId,
       line_items: input.lineItems.map(toUcpLineItemPayload),
       buyer: toUcpBuyerPayload(input.buyer),
       fulfillment: toUcpFulfillmentPayload(input.fulfillment),
+      // Commit the payment handler the buyer supports (UCP PaymentInstrument).
+      // The shop places an order only for a handler it can settle; absent a
+      // supported commitment it escalates to a browser handoff (no order).
+      ...(input.paymentHandlerId
+        ? { payment: { type: 'x402', handler_id: input.paymentHandlerId } }
+        : {}),
     });
   }
 

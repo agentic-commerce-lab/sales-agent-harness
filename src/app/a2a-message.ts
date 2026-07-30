@@ -8,6 +8,10 @@ export interface A2aHttpApp {
   createSession(input: CreateAgentSessionInput): { readonly agentSessionId: string };
   chat(input: ChatInput): Promise<AgentRuntimeResponse>;
   recordAp2Mandate(agentSessionId: string, mandate: Ap2PaymentMandate): void;
+  recordPaymentCapability(
+    agentSessionId: string,
+    supportedPaymentHandlers: readonly string[],
+  ): void;
 }
 
 export async function handleA2aSendMessage(app: A2aHttpApp, input: unknown): Promise<unknown> {
@@ -18,6 +22,12 @@ export async function handleA2aSendMessage(app: A2aHttpApp, input: unknown): Pro
 
   if (ap2Mandate) {
     app.recordAp2Mandate(agentSessionId, ap2Mandate);
+  }
+
+  const supportedPaymentHandlers = extractSupportedPaymentHandlers(parsed.message);
+
+  if (supportedPaymentHandlers) {
+    app.recordPaymentCapability(agentSessionId, supportedPaymentHandlers);
   }
 
   const response = await app.chat({ agentSessionId, message });
@@ -55,30 +65,64 @@ function createCompletedTask(
         parts: [{ kind: 'text', text: response.message }],
         metadata: {
           toolCalls: [...response.toolCalls],
-          // Structured relay of buyer-executed payment instructions: opaque
-          // codes must not depend on the model copying them into prose.
-          ...(response.completedCheckout?.orderId
-            ? { orderId: response.completedCheckout.orderId }
-            : {}),
-          ...(response.completedCheckout?.x402 ? { x402: response.completedCheckout.x402 } : {}),
-          ...(response.completedCheckout?.ap2MerchantAuthorization
-            ? { ap2MerchantAuthorization: response.completedCheckout.ap2MerchantAuthorization }
-            : {}),
-          // Lets the buyer build an AP2 mandate that pins the real checkout
-          // (id + total) instead of guessing at it from prose.
-          ...(response.pendingCheckoutTerms
-            ? { checkoutTerms: response.pendingCheckoutTerms }
-            : {}),
+          ...buildCheckoutMetadata(response),
         },
       },
     ],
   };
 }
 
+/**
+ * Structured relay of buyer-executed checkout details, kept out of prose so
+ * opaque codes never depend on the model copying them: order id + x402
+ * instructions, a fallback web-checkout url for x402-disabled clients, the AP2
+ * merchant authorization, and the pending checkout terms (id + total) the buyer
+ * uses to pin its next mandate.
+ */
+function buildCheckoutMetadata(response: AgentRuntimeResponse): Record<string, unknown> {
+  const checkout = response.completedCheckout;
+
+  return compact({
+    orderId: checkout?.orderId,
+    x402: checkout?.x402,
+    continueUrl: checkout?.continueUrl,
+    ap2MerchantAuthorization: checkout?.ap2MerchantAuthorization,
+    checkoutTerms: response.pendingCheckoutTerms,
+  });
+}
+
+/** Drop `undefined` entries, so optional fields build without per-key ternaries. */
+function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const result: Partial<T> = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      (result as Record<string, unknown>)[key] = value;
+    }
+  }
+
+  return result;
+}
+
 function extractAp2Mandate(message: A2aMessage): Ap2PaymentMandate | undefined {
   const parsed = ap2MandateMetadataSchema.safeParse(message.metadata?.ap2Mandate);
 
   return parsed.success ? parsed.data : undefined;
+}
+
+/**
+ * The UCP payment handler ids the buyer client declares it supports. Absent (or
+ * empty) means the buyer commits no method, so the shop hands off to a browser
+ * checkout instead of placing an order.
+ */
+function extractSupportedPaymentHandlers(message: A2aMessage): readonly string[] | undefined {
+  const raw = message.metadata?.supportedPaymentHandlers;
+
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+
+  return raw.filter((value): value is string => typeof value === 'string');
 }
 
 function extractAgentSessionId(message: A2aMessage): string | null {

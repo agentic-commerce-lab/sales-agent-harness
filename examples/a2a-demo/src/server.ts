@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import http from 'node:http';
 
-import { runTurn } from './buyer-agent.js';
+import { resolveBuyerModelName, runTurn } from './buyer-agent.js';
 import { errorMessage, json, log, logError, readBody, send } from './http-helpers.js';
 import { demoPageHtml } from './page.js';
 import { parseGoal, parseTurnInput } from './request-parsers.js';
@@ -58,7 +58,7 @@ async function handleTurn(req: IncomingMessage, res: ServerResponse): Promise<vo
 type RouteHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void>;
 
 async function handleHome(_req: IncomingMessage, res: ServerResponse): Promise<void> {
-  send(res, 200, 'text/html; charset=utf-8', demoPageHtml());
+  send(res, 200, 'text/html; charset=utf-8', demoPageHtml(resolveBuyerModelName()));
 }
 
 const postRoutes: Record<string, RouteHandler> = {

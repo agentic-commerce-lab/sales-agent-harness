@@ -1,7 +1,7 @@
 import { privateKeyToAccount } from 'viem/accounts';
 import { wrapFetchWithPayment } from 'x402-fetch';
 
-import { asArray, asRecord, readString } from './seller-client.js';
+import { asArray, asRecord, readString } from './json.js';
 
 /**
  * Buyer-side x402 payment executor. Deterministic code, not the model: the
@@ -30,6 +30,16 @@ export interface X402PaymentOutcome {
 interface PaymentRequirement {
   maxAmountRequired: string;
   network: string;
+}
+
+/**
+ * Whether this buyer client supports x402 programmatic payment at all.
+ * Defaults on (the demo's showcased behavior). Set X402_ENABLED=false to
+ * simulate a client that cannot pay via x402, so it falls back to the shop's
+ * `continue_url` (checkout handoff link) — the UCP fallback web experience.
+ */
+export function isX402Enabled(): boolean {
+  return process.env.X402_ENABLED !== 'false';
 }
 
 export async function payWithX402(instructions: X402Instructions): Promise<X402PaymentOutcome> {

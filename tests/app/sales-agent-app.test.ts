@@ -178,7 +178,12 @@ test('createSalesAgentHarnessApp validates checkout handoff tokens without leaki
     agentSessionId: 'session-1',
     cartId: 'cart-1',
   });
-  if (handoff.status !== 'ok' || !handoff.value || !('continueUrl' in handoff.value)) {
+  if (
+    handoff.status !== 'ok' ||
+    !handoff.value ||
+    !('continueUrl' in handoff.value) ||
+    typeof handoff.value.continueUrl !== 'string'
+  ) {
     throw new Error('Expected checkout handoff response');
   }
 

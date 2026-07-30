@@ -127,30 +127,52 @@ export class UcpAdapter implements CommerceAdapter {
   async completeCheckout(input: CompleteCheckoutInput): Promise<CompletedCheckoutResult> {
     try {
       const checkoutSession = await this.#client.getCheckout({ checkoutId: input.checkoutId });
+      const paymentHandlerId = input.supportedPaymentHandlers?.[0];
       await this.#client.updateCheckout({
         checkoutId: input.checkoutId,
         lineItems: readCheckoutLineItems(checkoutSession),
         buyer: input.buyer,
         fulfillment: input.fulfillment,
+        ...(paymentHandlerId ? { paymentHandlerId } : {}),
       });
       const checkout = await this.#client.completeCheckout({
         checkoutId: input.checkoutId,
         ap2Mandate: input.ap2Mandate,
       });
-      const x402 = readX402Instructions(checkout);
-      const ap2MerchantAuthorization = checkout.ap2?.merchant_authorization;
+      const continueUrl = readUcpContinueUrl(checkout);
 
-      return {
-        summary: normalizeUcpCart(checkout),
-        orderId: checkout.order?.id,
-        status: 'completed',
-        ...(x402 ? { x402 } : {}),
-        ...(ap2MerchantAuthorization ? { ap2MerchantAuthorization } : {}),
-      };
+      // No mutually-supported payment method: the shop placed no order and asks
+      // the buyer to finish in a browser. Surface the handoff, not a completion.
+      if (checkout.status === 'requires_escalation') {
+        return {
+          summary: normalizeUcpCart(checkout),
+          status: 'requires_escalation',
+          ...(continueUrl ? { continueUrl } : {}),
+        };
+      }
+
+      return buildCompletedResult(checkout, continueUrl);
     } catch (error) {
       throw wrapUcpError('UCP checkout completion failed', error);
     }
   }
+}
+
+function buildCompletedResult(
+  checkout: UcpCart,
+  continueUrl: string | undefined,
+): CompletedCheckoutResult {
+  const x402 = readX402Instructions(checkout);
+  const ap2MerchantAuthorization = checkout.ap2?.merchant_authorization;
+
+  return {
+    summary: normalizeUcpCart(checkout),
+    orderId: checkout.order?.id,
+    status: 'completed',
+    ...(x402 ? { x402 } : {}),
+    ...(ap2MerchantAuthorization ? { ap2MerchantAuthorization } : {}),
+    ...(continueUrl ? { continueUrl } : {}),
+  };
 }
 
 function readX402Instructions(checkout: UcpCart): X402PaymentInstructions | undefined {

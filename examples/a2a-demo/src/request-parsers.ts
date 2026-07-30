@@ -1,5 +1,6 @@
 import type { ConversationEntry, TurnInput } from './buyer-agent.js';
-import { asRecord, type CheckoutTerms } from './seller-client.js';
+import { asRecord } from './json.js';
+import type { CheckoutTerms } from './seller-client.js';
 
 function parseJsonRecord(raw: string): Record<string, unknown> | undefined {
   try {

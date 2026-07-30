@@ -16,6 +16,10 @@ export interface SalesAgentHttpApp {
   chat(input: ChatInput): Promise<AgentRuntimeResponse>;
   validateCheckoutHandoff(input: { readonly handoffId: string }): CheckoutHandoffValidationResult;
   recordAp2Mandate(agentSessionId: string, mandate: Ap2PaymentMandate): void;
+  recordPaymentCapability(
+    agentSessionId: string,
+    supportedPaymentHandlers: readonly string[],
+  ): void;
 }
 
 export interface SalesAgentHttpHandler {
